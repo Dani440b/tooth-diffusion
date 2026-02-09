@@ -33,15 +33,20 @@ def main():
     np.random.seed(seed)
     random.seed(seed)
     
-    # Initialize distributed process group
-    dist.init_process_group(backend='nccl', init_method='env://')
-    local_rank = int(os.environ['LOCAL_RANK'])
+    # Initialize distributed process group. Choose backend based on CUDA availability.
+    use_cuda = th.cuda.is_available()
+    backend = 'nccl' if use_cuda else 'gloo'
+    dist.init_process_group(backend=backend, init_method='env://')
+    local_rank = int(os.environ.get('LOCAL_RANK', 0))
     rank = dist.get_rank()
     world_size = dist.get_world_size()
-    
-    # Set device
-    th.cuda.set_device(local_rank)
-    device = th.device(f'cuda:{local_rank}')
+
+    # Set device (only set CUDA device when available)
+    if use_cuda:
+        th.cuda.set_device(local_rank)
+        device = th.device(f'cuda:{local_rank}')
+    else:
+        device = th.device('cpu')
     
     summary_writer = None
     if args.use_tensorboard and rank == 0:
@@ -63,7 +68,11 @@ def main():
     # Model and diffusion creation
     model, diffusion = create_model_and_diffusion(**arguments)
     model = model.to(device)
-    model = th.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank]) # Wrap model for distributed training
+    # Wrap model for distributed training. For CUDA use device_ids, for CPU let DDP handle CPU tensors.
+    if use_cuda:
+        model = th.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank])
+    else:
+        model = th.nn.parallel.DistributedDataParallel(model)
 
     # logger.log("Number of trainable parameters: {}".format(np.array([np.array(p.shape).prod() for p in model.parameters()]).sum()))
     logger.log(f"Rank {rank}: Creating schedule sampler...")
