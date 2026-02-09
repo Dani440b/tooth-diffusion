@@ -121,6 +121,8 @@ SAMPLE="
 --sampling_steps=${SAMPLING_STEPS}
 --clip_denoised=True
 "
+# forward any extra args passed after the first three positional args
+EXTRA_ARGS="${@:4}"
 # run the python scripts
 if [[ $MODE == 'train' ]]; then
   echo "Mode: $MODE";
@@ -128,7 +130,7 @@ if [[ $MODE == 'train' ]]; then
   echo "Condition image: $CONDITIONING_IMAGE";
   CUDA_VISIBLE_DEVICES=$GPU OMP_NUM_THREADS=1 \
   torchrun --nproc_per_node=$NUMBERofGPUS --master_port=$MASTERPORT \
-    scripts/generation_train.py $TRAIN $COMMON
+    scripts/generation_train.py $TRAIN $COMMON $EXTRA_ARGS
 else
-  python scripts/reconstruction/generation_sample_add.py $SAMPLE $COMMON;
+  python scripts/reconstruction/generation_sample_add.py $SAMPLE $COMMON $EXTRA_ARGS;
 fi
