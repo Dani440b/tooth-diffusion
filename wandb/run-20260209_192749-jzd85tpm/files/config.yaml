@@ -1,0 +1,287 @@
+_wandb:
+    value:
+        cli_version: 0.24.2
+        e:
+            y7fp24veokr75gd2tuzcdjk0i1ybyldh:
+                args:
+                    - --data_dir=prep_data/train
+                    - --meta_data=prep_data/metadata.csv
+                    - --target=mri
+                    - --augment_missing_teeth=False
+                    - --reconstruct_3_mode=False
+                    - --training_mode=train
+                    - --conditioning_image=none
+                    - --resume_checkpoint=
+                    - --resume_step=0
+                    - --image_size=256
+                    - --use_fp16=False
+                    - --lr=1e-5
+                    - --lambda_mask=10.0
+                    - --save_interval=5000
+                    - --num_workers=10
+                    - --devices=0
+                    - --beta_min=0.1
+                    - --beta_max=20.0
+                    - --dataset=mri
+                    - --num_channels=64
+                    - --class_cond=False
+                    - --num_res_blocks=2
+                    - --num_heads=1
+                    - --timestep_respacing=
+                    - --learn_sigma=False
+                    - --use_scale_shift_norm=True
+                    - --attention_resolutions=
+                    - --channel_mult=1,2,2,4,4,4
+                    - --diffusion_steps=2
+                    - --noise_schedule=vp_sde
+                    - --rescale_learned_sigmas=False
+                    - --rescale_timesteps=False
+                    - --dims=3
+                    - --batch_size=1
+                    - --num_groups=32
+                    - --in_channels=8
+                    - --out_channels=8
+                    - --bottleneck_attention=False
+                    - --resample_2d=False
+                    - --renormalize=True
+                    - --additive_skips=False
+                    - --use_freq=True
+                    - --predict_xstart=True
+                    - --use_wandb
+                    - "True"
+                    - --wandb_project
+                    - mri_wavelet
+                    - --wandb_entity
+                    - dklaaby
+                    - --wandb_run_name
+                    - test_run
+                codePath: scripts/generation_train.py
+                codePathLocal: scripts/generation_train.py
+                cpu_count: 48
+                cpu_count_logical: 96
+                cudaVersion: "12.8"
+                disk:
+                    /:
+                        total: "161024573440"
+                        used: "48794353664"
+                email: dklaaby@gmail.com
+                executable: /home/vkb444/torch-uv/.venv/bin/python3
+                git:
+                    commit: 0efdeabeb564d173b6eac87dfbce8f89ff67ea29
+                    remote: git@github.com:Dani440b/tooth-diffusion.git
+                gpu: NVIDIA A100-PCIE-40GB
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Ampere
+                      cudaCores: 6912
+                      memoryTotal: "42949672960"
+                      name: NVIDIA A100-PCIE-40GB
+                      uuid: GPU-46e7672a-f086-ddb2-8caf-a73a76af9e2c
+                host: hendrixgpu01fl.unicph.domain
+                memory:
+                    total: "810702045184"
+                os: Linux-4.18.0-553.40.1.el8_10.x86_64-x86_64-with-glibc2.28
+                program: /home/vkb444/masters/tooth-diffusion/scripts/generation_train.py
+                python: CPython 3.11.13
+                root: /home/vkb444/masters/tooth-diffusion
+                slurm:
+                    cluster_name: dicompute
+                    conf: /var/spool/slurmd/conf-cache/slurm.conf
+                    cpu_bind: quiet,mask_cpu:0x00000000F00000000000F000
+                    cpu_bind_list: "0x00000000F00000000000F000"
+                    cpu_bind_type: 'mask_cpu:'
+                    cpu_bind_verbose: quiet
+                    cpus_on_node: "8"
+                    gtids: "0"
+                    job_account: students
+                    job_cpus_per_node: "8"
+                    job_gid: "100"
+                    job_id: "1121"
+                    job_name: bash
+                    job_nodelist: hendrixgpu01fl
+                    job_num_nodes: "1"
+                    job_partition: gpu
+                    job_qos: normal
+                    job_uid: "248850336"
+                    job_user: vkb444
+                    jobid: "1121"
+                    launch_node_ipaddr: 10.84.3.168
+                    localid: "0"
+                    nnodes: "1"
+                    nodeid: "0"
+                    nodelist: hendrixgpu01fl
+                    nprocs: "1"
+                    ntasks: "1"
+                    prio_process: "0"
+                    procid: "0"
+                    pty_port: "33111"
+                    pty_win_col: "212"
+                    pty_win_row: "47"
+                    srun_comm_host: 10.84.3.168
+                    srun_comm_port: "44123"
+                    step_gpus: "5"
+                    step_id: "0"
+                    step_launcher_port: "44123"
+                    step_nodelist: hendrixgpu01fl
+                    step_num_nodes: "1"
+                    step_num_tasks: "1"
+                    step_tasks_per_node: "1"
+                    stepid: "0"
+                    submit_dir: /home/vkb444
+                    submit_host: hendrixgate02fl.unicph.domain
+                    task_pid: "2839006"
+                    tasks_per_node: "1"
+                    topology_addr: hendrixgpu01fl
+                    topology_addr_pattern: node
+                    umask: "0022"
+                    working_cluster: dicompute:hendrixhead01fl.unicph.domain:6817:9216:109
+                startedAt: "2026-02-09T18:27:49.786146Z"
+                writerId: y7fp24veokr75gd2tuzcdjk0i1ybyldh
+        m: []
+        python_version: 3.11.13
+        t:
+            "1":
+                - 1
+                - 41
+            "2":
+                - 1
+                - 41
+            "3":
+                - 13
+                - 16
+                - 61
+            "4": 3.11.13
+            "5": 0.24.2
+            "12": 0.24.2
+            "13": linux-x86_64
+additive_skips:
+    value: false
+attention_resolutions:
+    value: ""
+augment_missing_teeth:
+    value: false
+batch_size:
+    value: 1
+beta_max:
+    value: 20
+beta_min:
+    value: 0.1
+bottleneck_attention:
+    value: false
+channel_mult:
+    value: 1,2,2,4,4,4
+class_cond:
+    value: false
+conditioning_image:
+    value: none
+data_dir:
+    value: prep_data/train
+dataset:
+    value: mri
+devices:
+    value:
+        - "0"
+diffusion_steps:
+    value: 2
+dims:
+    value: 3
+dropout:
+    value: 0
+ema_rate:
+    value: "0.9999"
+fp16_scale_growth:
+    value: 0.001
+image_size:
+    value: 256
+in_channels:
+    value: 8
+lambda_mask:
+    value: 10
+learn_sigma:
+    value: false
+log_interval:
+    value: 100
+lr:
+    value: 1e-05
+lr_anneal_steps:
+    value: 0
+meta_data:
+    value: prep_data/metadata.csv
+microbatch:
+    value: -1
+mode:
+    value: default
+noise_schedule:
+    value: vp_sde
+num_channels:
+    value: 64
+num_groups:
+    value: 32
+num_head_channels:
+    value: -1
+num_heads:
+    value: 1
+num_heads_upsample:
+    value: -1
+num_res_blocks:
+    value: 2
+num_workers:
+    value: 10
+out_channels:
+    value: 8
+predict_xstart:
+    value: true
+reconstruct_3_mode:
+    value: false
+renormalize:
+    value: true
+resample_2d:
+    value: false
+resblock_updown:
+    value: true
+rescale_learned_sigmas:
+    value: false
+rescale_timesteps:
+    value: false
+resume_checkpoint:
+    value: ""
+resume_step:
+    value: 0
+save_interval:
+    value: 5000
+schedule_sampler:
+    value: uniform
+seed:
+    value: 0
+target:
+    value: mri
+tensorboard_path:
+    value: ""
+timestep_respacing:
+    value: ""
+training_mode:
+    value: train
+use_checkpoint:
+    value: false
+use_fp16:
+    value: false
+use_freq:
+    value: true
+use_kl:
+    value: false
+use_new_attention_order:
+    value: false
+use_scale_shift_norm:
+    value: true
+use_tensorboard:
+    value: true
+use_wandb:
+    value: true
+wandb_entity:
+    value: dklaaby
+wandb_project:
+    value: mri_wavelet
+wandb_run_name:
+    value: test_run
+weight_decay:
+    value: 0

@@ -1,0 +1,524 @@
+Rank 0/1: Creating model and diffusion...
+Rank 0: Creating schedule sampler...
+maxt:  2
+Found 503 samples in 'train' set.
+Rank 0: Creating dataset...
+/home/vkb444/torch-uv/.venv/lib64/python3.11/site-packages/torch/utils/data/dataloader.py:558: UserWarning: This DataLoader will create 10 worker processes in total. Our suggested max number of worker in current system is 8, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(_create_warning_msg(
+Rank 0: Start training...
+Using learning rate: 1e-05 | Using lambda mask: 10.0
+Nummer of timesteps: 2
+[Step 100] Step time: 0.95s | Avg per step: 1.06s | Total elapsed: 1.8 min
+-------------------------
+| masked_mse | 0.000471 |
+| mse_wav    | 0.0187   |
+| mse_wav_q0 | 0.057    |
+| mse_wav_q2 | 0.0756   |
+| samples    | 101      |
+| step       | 100      |
+-------------------------
+[Rank 0] Step 100 — processed 100 samples.
+[Step 200] Step time: 1.57s | Avg per step: 1.01s | Total elapsed: 3.4 min
+-------------------------
+| masked_mse | 0.000313 |
+| mse_wav    | 0.0101   |
+| mse_wav_q0 | 0.0476   |
+| mse_wav_q2 | 0.0449   |
+| samples    | 201      |
+| step       | 200      |
+-------------------------
+[Rank 0] Step 200 — processed 200 samples.
+[Step 300] Step time: 0.96s | Avg per step: 0.99s | Total elapsed: 5.0 min
+-------------------------
+| masked_mse | 0.000307 |
+| mse_wav    | 0.00925  |
+| mse_wav_q0 | 0.0406   |
+| mse_wav_q2 | 0.0458   |
+| samples    | 301      |
+| step       | 300      |
+-------------------------
+[Rank 0] Step 300 — processed 300 samples.
+[Step 400] Step time: 1.05s | Avg per step: 0.99s | Total elapsed: 6.6 min
+-------------------------
+| masked_mse | 0.000298 |
+| mse_wav    | 0.00879  |
+| mse_wav_q0 | 0.0399   |
+| mse_wav_q2 | 0.0414   |
+| samples    | 401      |
+| step       | 400      |
+-------------------------
+[Rank 0] Step 400 — processed 400 samples.
+[Step 500] Step time: 0.95s | Avg per step: 0.98s | Total elapsed: 8.2 min
+-------------------------
+| masked_mse | 0.000283 |
+| mse_wav    | 0.00824  |
+| mse_wav_q0 | 0.032    |
+| mse_wav_q2 | 0.0432   |
+| samples    | 501      |
+| step       | 500      |
+-------------------------
+[Rank 0] Step 500 — processed 500 samples.
+[Step 600] Step time: 1.05s | Avg per step: 0.99s | Total elapsed: 9.9 min
+-------------------------
+| masked_mse | 0.000286 |
+| mse_wav    | 0.00791  |
+| mse_wav_q0 | 0.0286   |
+| mse_wav_q2 | 0.042    |
+| samples    | 601      |
+| step       | 600      |
+-------------------------
+[Rank 0] Step 600 — processed 600 samples.
+[Step 700] Step time: 1.01s | Avg per step: 0.99s | Total elapsed: 11.5 min
+-------------------------
+| masked_mse | 0.000287 |
+| mse_wav    | 0.00746  |
+| mse_wav_q0 | 0.0257   |
+| mse_wav_q2 | 0.041    |
+| samples    | 701      |
+| step       | 700      |
+-------------------------
+[Rank 0] Step 700 — processed 700 samples.
+[Step 800] Step time: 1.06s | Avg per step: 0.98s | Total elapsed: 13.1 min
+-------------------------
+| masked_mse | 0.000284 |
+| mse_wav    | 0.00734  |
+| mse_wav_q0 | 0.0261   |
+| mse_wav_q2 | 0.039    |
+| samples    | 801      |
+| step       | 800      |
+-------------------------
+[Rank 0] Step 800 — processed 800 samples.
+[Step 900] Step time: 0.94s | Avg per step: 0.98s | Total elapsed: 14.7 min
+-------------------------
+| masked_mse | 0.000267 |
+| mse_wav    | 0.00757  |
+| mse_wav_q0 | 0.0231   |
+| mse_wav_q2 | 0.0437   |
+| samples    | 901      |
+| step       | 900      |
+-------------------------
+[Rank 0] Step 900 — processed 900 samples.
+[Step 1000] Step time: 1.03s | Avg per step: 0.98s | Total elapsed: 16.3 min
+-------------------------
+| masked_mse | 0.000271 |
+| mse_wav    | 0.00753  |
+| mse_wav_q0 | 0.0231   |
+| mse_wav_q2 | 0.0429   |
+| samples    | 1e+03    |
+| step       | 1e+03    |
+-------------------------
+[Rank 0] Step 1000 — processed 1000 samples.
+[Step 1100] Step time: 0.95s | Avg per step: 0.99s | Total elapsed: 18.1 min
+-------------------------
+| masked_mse | 0.000272 |
+| mse_wav    | 0.00721  |
+| mse_wav_q0 | 0.0225   |
+| mse_wav_q2 | 0.0409   |
+| samples    | 1.1e+03  |
+| step       | 1.1e+03  |
+-------------------------
+[Rank 0] Step 1100 — processed 1100 samples.
+[Step 1200] Step time: 1.04s | Avg per step: 0.98s | Total elapsed: 19.7 min
+-------------------------
+| masked_mse | 0.000277 |
+| mse_wav    | 0.00724  |
+| mse_wav_q0 | 0.0223   |
+| mse_wav_q2 | 0.04     |
+| samples    | 1.2e+03  |
+| step       | 1.2e+03  |
+-------------------------
+[Rank 0] Step 1200 — processed 1200 samples.
+[Step 1300] Step time: 0.94s | Avg per step: 0.98s | Total elapsed: 21.3 min
+-------------------------
+| masked_mse | 0.000272 |
+| mse_wav    | 0.00714  |
+| mse_wav_q0 | 0.0223   |
+| mse_wav_q2 | 0.0375   |
+| samples    | 1.3e+03  |
+| step       | 1.3e+03  |
+-------------------------
+[Rank 0] Step 1300 — processed 1300 samples.
+[Step 1400] Step time: 1.05s | Avg per step: 0.98s | Total elapsed: 22.9 min
+-------------------------
+| masked_mse | 0.000277 |
+| mse_wav    | 0.00736  |
+| mse_wav_q0 | 0.0226   |
+| mse_wav_q2 | 0.0384   |
+| samples    | 1.4e+03  |
+| step       | 1.4e+03  |
+-------------------------
+[Rank 0] Step 1400 — processed 1400 samples.
+[Step 1500] Step time: 0.94s | Avg per step: 0.98s | Total elapsed: 24.5 min
+-------------------------
+| masked_mse | 0.000262 |
+| mse_wav    | 0.00689  |
+| mse_wav_q0 | 0.021    |
+| mse_wav_q2 | 0.0373   |
+| samples    | 1.5e+03  |
+| step       | 1.5e+03  |
+-------------------------
+[Rank 0] Step 1500 — processed 1500 samples.
+[Step 1600] Step time: 1.06s | Avg per step: 0.98s | Total elapsed: 26.2 min
+-------------------------
+| masked_mse | 0.000268 |
+| mse_wav    | 0.00725  |
+| mse_wav_q0 | 0.0203   |
+| mse_wav_q2 | 0.0399   |
+| samples    | 1.6e+03  |
+| step       | 1.6e+03  |
+-------------------------
+[Rank 0] Step 1600 — processed 1600 samples.
+[Step 1700] Step time: 0.94s | Avg per step: 0.98s | Total elapsed: 27.8 min
+-------------------------
+| masked_mse | 0.000263 |
+| mse_wav    | 0.0072   |
+| mse_wav_q0 | 0.0207   |
+| mse_wav_q2 | 0.0399   |
+| samples    | 1.7e+03  |
+| step       | 1.7e+03  |
+-------------------------
+[Rank 0] Step 1700 — processed 1700 samples.
+[Step 1800] Step time: 1.09s | Avg per step: 0.98s | Total elapsed: 29.4 min
+-------------------------
+| masked_mse | 0.000264 |
+| mse_wav    | 0.00658  |
+| mse_wav_q0 | 0.0191   |
+| mse_wav_q2 | 0.0367   |
+| samples    | 1.8e+03  |
+| step       | 1.8e+03  |
+-------------------------
+[Rank 0] Step 1800 — processed 1800 samples.
+[Step 1900] Step time: 1.02s | Avg per step: 0.98s | Total elapsed: 31.0 min
+-------------------------
+| masked_mse | 0.000262 |
+| mse_wav    | 0.00676  |
+| mse_wav_q0 | 0.019    |
+| mse_wav_q2 | 0.0366   |
+| samples    | 1.9e+03  |
+| step       | 1.9e+03  |
+-------------------------
+[Rank 0] Step 1900 — processed 1900 samples.
+[Step 2000] Step time: 1.06s | Avg per step: 0.98s | Total elapsed: 32.6 min
+-------------------------
+| masked_mse | 0.00027  |
+| mse_wav    | 0.0069   |
+| mse_wav_q0 | 0.0186   |
+| mse_wav_q2 | 0.0382   |
+| samples    | 2e+03    |
+| step       | 2e+03    |
+-------------------------
+[Rank 0] Step 2000 — processed 2000 samples.
+[Step 2100] Step time: 0.95s | Avg per step: 0.98s | Total elapsed: 34.4 min
+-------------------------
+| masked_mse | 0.000264 |
+| mse_wav    | 0.00653  |
+| mse_wav_q0 | 0.0183   |
+| mse_wav_q2 | 0.0367   |
+| samples    | 2.1e+03  |
+| step       | 2.1e+03  |
+-------------------------
+[Rank 0] Step 2100 — processed 2100 samples.
+[Step 2200] Step time: 1.04s | Avg per step: 0.98s | Total elapsed: 36.0 min
+-------------------------
+| masked_mse | 0.00027  |
+| mse_wav    | 0.00696  |
+| mse_wav_q0 | 0.0178   |
+| mse_wav_q2 | 0.0395   |
+| samples    | 2.2e+03  |
+| step       | 2.2e+03  |
+-------------------------
+[Rank 0] Step 2200 — processed 2200 samples.
+[Step 2300] Step time: 0.94s | Avg per step: 0.98s | Total elapsed: 37.7 min
+-------------------------
+| masked_mse | 0.000267 |
+| mse_wav    | 0.00717  |
+| mse_wav_q0 | 0.0182   |
+| mse_wav_q2 | 0.041    |
+| samples    | 2.3e+03  |
+| step       | 2.3e+03  |
+-------------------------
+[Rank 0] Step 2300 — processed 2300 samples.
+[Step 2400] Step time: 1.05s | Avg per step: 0.98s | Total elapsed: 39.2 min
+-------------------------
+| masked_mse | 0.000252 |
+| mse_wav    | 0.00657  |
+| mse_wav_q0 | 0.0177   |
+| mse_wav_q2 | 0.0377   |
+| samples    | 2.4e+03  |
+| step       | 2.4e+03  |
+-------------------------
+[Rank 0] Step 2400 — processed 2400 samples.
+[Step 2500] Step time: 0.92s | Avg per step: 0.98s | Total elapsed: 40.8 min
+-------------------------
+| masked_mse | 0.000254 |
+| mse_wav    | 0.00648  |
+| mse_wav_q0 | 0.0169   |
+| mse_wav_q2 | 0.0359   |
+| samples    | 2.5e+03  |
+| step       | 2.5e+03  |
+-------------------------
+[Rank 0] Step 2500 — processed 2500 samples.
+[Step 2600] Step time: 1.06s | Avg per step: 0.98s | Total elapsed: 42.5 min
+-------------------------
+| masked_mse | 0.000263 |
+| mse_wav    | 0.0069   |
+| mse_wav_q0 | 0.0176   |
+| mse_wav_q2 | 0.0394   |
+| samples    | 2.6e+03  |
+| step       | 2.6e+03  |
+-------------------------
+[Rank 0] Step 2600 — processed 2600 samples.
+[Step 2700] Step time: 0.95s | Avg per step: 0.98s | Total elapsed: 44.1 min
+-------------------------
+| masked_mse | 0.000264 |
+| mse_wav    | 0.00688  |
+| mse_wav_q0 | 0.0171   |
+| mse_wav_q2 | 0.0376   |
+| samples    | 2.7e+03  |
+| step       | 2.7e+03  |
+-------------------------
+[Rank 0] Step 2700 — processed 2700 samples.
+[Step 2800] Step time: 1.05s | Avg per step: 0.98s | Total elapsed: 45.7 min
+-------------------------
+| masked_mse | 0.000254 |
+| mse_wav    | 0.00641  |
+| mse_wav_q0 | 0.0163   |
+| mse_wav_q2 | 0.0384   |
+| samples    | 2.8e+03  |
+| step       | 2.8e+03  |
+-------------------------
+[Rank 0] Step 2800 — processed 2800 samples.
+[Step 2900] Step time: 0.94s | Avg per step: 0.98s | Total elapsed: 47.3 min
+-------------------------
+| masked_mse | 0.00025  |
+| mse_wav    | 0.00664  |
+| mse_wav_q0 | 0.0159   |
+| mse_wav_q2 | 0.0399   |
+| samples    | 2.9e+03  |
+| step       | 2.9e+03  |
+-------------------------
+[Rank 0] Step 2900 — processed 2900 samples.
+[Step 3000] Step time: 1.03s | Avg per step: 0.98s | Total elapsed: 48.9 min
+-------------------------
+| masked_mse | 0.000255 |
+| mse_wav    | 0.00612  |
+| mse_wav_q0 | 0.0157   |
+| mse_wav_q2 | 0.0343   |
+| samples    | 3e+03    |
+| step       | 3e+03    |
+-------------------------
+[Rank 0] Step 3000 — processed 3000 samples.
+[Step 3100] Step time: 0.94s | Avg per step: 0.98s | Total elapsed: 50.6 min
+-------------------------
+| masked_mse | 0.000258 |
+| mse_wav    | 0.00642  |
+| mse_wav_q0 | 0.0159   |
+| mse_wav_q2 | 0.0374   |
+| samples    | 3.1e+03  |
+| step       | 3.1e+03  |
+-------------------------
+[Rank 0] Step 3100 — processed 3100 samples.
+[Step 3200] Step time: 1.06s | Avg per step: 0.98s | Total elapsed: 52.2 min
+-------------------------
+| masked_mse | 0.000254 |
+| mse_wav    | 0.00649  |
+| mse_wav_q0 | 0.016    |
+| mse_wav_q2 | 0.0369   |
+| samples    | 3.2e+03  |
+| step       | 3.2e+03  |
+-------------------------
+[Rank 0] Step 3200 — processed 3200 samples.
+[Step 3300] Step time: 0.97s | Avg per step: 0.98s | Total elapsed: 53.9 min
+-------------------------
+| masked_mse | 0.000246 |
+| mse_wav    | 0.00646  |
+| mse_wav_q0 | 0.0148   |
+| mse_wav_q2 | 0.0397   |
+| samples    | 3.3e+03  |
+| step       | 3.3e+03  |
+-------------------------
+[Rank 0] Step 3300 — processed 3300 samples.
+[Step 3400] Step time: 1.06s | Avg per step: 0.98s | Total elapsed: 55.5 min
+-------------------------
+| masked_mse | 0.000256 |
+| mse_wav    | 0.00657  |
+| mse_wav_q0 | 0.0156   |
+| mse_wav_q2 | 0.0377   |
+| samples    | 3.4e+03  |
+| step       | 3.4e+03  |
+-------------------------
+[Rank 0] Step 3400 — processed 3400 samples.
+[Step 3500] Step time: 0.95s | Avg per step: 0.98s | Total elapsed: 57.1 min
+-------------------------
+| masked_mse | 0.000251 |
+| mse_wav    | 0.00629  |
+| mse_wav_q0 | 0.015    |
+| mse_wav_q2 | 0.0375   |
+| samples    | 3.5e+03  |
+| step       | 3.5e+03  |
+-------------------------
+[Rank 0] Step 3500 — processed 3500 samples.
+[Step 3600] Step time: 1.10s | Avg per step: 0.98s | Total elapsed: 58.8 min
+-------------------------
+| masked_mse | 0.000245 |
+| mse_wav    | 0.00674  |
+| mse_wav_q0 | 0.0156   |
+| mse_wav_q2 | 0.0421   |
+| samples    | 3.6e+03  |
+| step       | 3.6e+03  |
+-------------------------
+[Rank 0] Step 3600 — processed 3600 samples.
+[Step 3700] Step time: 0.94s | Avg per step: 0.98s | Total elapsed: 60.4 min
+-------------------------
+| masked_mse | 0.000257 |
+| mse_wav    | 0.00635  |
+| mse_wav_q0 | 0.0144   |
+| mse_wav_q2 | 0.0379   |
+| samples    | 3.7e+03  |
+| step       | 3.7e+03  |
+-------------------------
+[Rank 0] Step 3700 — processed 3700 samples.
+[Step 3800] Step time: 1.04s | Avg per step: 0.98s | Total elapsed: 62.0 min
+-------------------------
+| masked_mse | 0.000245 |
+| mse_wav    | 0.00635  |
+| mse_wav_q0 | 0.0144   |
+| mse_wav_q2 | 0.0388   |
+| samples    | 3.8e+03  |
+| step       | 3.8e+03  |
+-------------------------
+[Rank 0] Step 3800 — processed 3800 samples.
+[Step 3900] Step time: 0.95s | Avg per step: 0.98s | Total elapsed: 63.6 min
+-------------------------
+| masked_mse | 0.000235 |
+| mse_wav    | 0.00603  |
+| mse_wav_q0 | 0.0144   |
+| mse_wav_q2 | 0.0353   |
+| samples    | 3.9e+03  |
+| step       | 3.9e+03  |
+-------------------------
+[Rank 0] Step 3900 — processed 3900 samples.
+[Step 4000] Step time: 1.12s | Avg per step: 0.98s | Total elapsed: 65.2 min
+-------------------------
+| masked_mse | 0.000238 |
+| mse_wav    | 0.00564  |
+| mse_wav_q0 | 0.0138   |
+| mse_wav_q2 | 0.0344   |
+| samples    | 4e+03    |
+| step       | 4e+03    |
+-------------------------
+[Rank 0] Step 4000 — processed 4000 samples.
+[Step 4100] Step time: 0.94s | Avg per step: 0.98s | Total elapsed: 66.9 min
+-------------------------
+| masked_mse | 0.000254 |
+| mse_wav    | 0.00627  |
+| mse_wav_q0 | 0.0147   |
+| mse_wav_q2 | 0.036    |
+| samples    | 4.1e+03  |
+| step       | 4.1e+03  |
+-------------------------
+[Rank 0] Step 4100 — processed 4100 samples.
+[Step 4200] Step time: 1.07s | Avg per step: 0.98s | Total elapsed: 68.6 min
+-------------------------
+| masked_mse | 0.00025  |
+| mse_wav    | 0.00645  |
+| mse_wav_q0 | 0.0137   |
+| mse_wav_q2 | 0.0385   |
+| samples    | 4.2e+03  |
+| step       | 4.2e+03  |
+-------------------------
+[Rank 0] Step 4200 — processed 4200 samples.
+[Step 4300] Step time: 0.94s | Avg per step: 0.98s | Total elapsed: 70.2 min
+-------------------------
+| masked_mse | 0.000246 |
+| mse_wav    | 0.0066   |
+| mse_wav_q0 | 0.0137   |
+| mse_wav_q2 | 0.0401   |
+| samples    | 4.3e+03  |
+| step       | 4.3e+03  |
+-------------------------
+[Rank 0] Step 4300 — processed 4300 samples.
+[Step 4400] Step time: 1.04s | Avg per step: 0.98s | Total elapsed: 71.8 min
+-------------------------
+| masked_mse | 0.000247 |
+| mse_wav    | 0.00634  |
+| mse_wav_q0 | 0.0137   |
+| mse_wav_q2 | 0.0387   |
+| samples    | 4.4e+03  |
+| step       | 4.4e+03  |
+-------------------------
+[Rank 0] Step 4400 — processed 4400 samples.
+[Step 4500] Step time: 0.94s | Avg per step: 0.98s | Total elapsed: 73.4 min
+-------------------------
+| masked_mse | 0.000245 |
+| mse_wav    | 0.0066   |
+| mse_wav_q0 | 0.014    |
+| mse_wav_q2 | 0.0405   |
+| samples    | 4.5e+03  |
+| step       | 4.5e+03  |
+-------------------------
+[Rank 0] Step 4500 — processed 4500 samples.
+[Step 4600] Step time: 1.10s | Avg per step: 0.98s | Total elapsed: 75.1 min
+-------------------------
+| masked_mse | 0.000246 |
+| mse_wav    | 0.00636  |
+| mse_wav_q0 | 0.0135   |
+| mse_wav_q2 | 0.0389   |
+| samples    | 4.6e+03  |
+| step       | 4.6e+03  |
+-------------------------
+[Rank 0] Step 4600 — processed 4600 samples.
+[Step 4700] Step time: 0.95s | Avg per step: 0.98s | Total elapsed: 76.7 min
+-------------------------
+| masked_mse | 0.000245 |
+| mse_wav    | 0.00634  |
+| mse_wav_q0 | 0.0144   |
+| mse_wav_q2 | 0.0386   |
+| samples    | 4.7e+03  |
+| step       | 4.7e+03  |
+-------------------------
+[Rank 0] Step 4700 — processed 4700 samples.
+[Step 4800] Step time: 1.05s | Avg per step: 0.98s | Total elapsed: 78.4 min
+-------------------------
+| masked_mse | 0.000245 |
+| mse_wav    | 0.00608  |
+| mse_wav_q0 | 0.0134   |
+| mse_wav_q2 | 0.0365   |
+| samples    | 4.8e+03  |
+| step       | 4.8e+03  |
+-------------------------
+[Rank 0] Step 4800 — processed 4800 samples.
+[Step 4900] Step time: 0.95s | Avg per step: 0.98s | Total elapsed: 80.0 min
+-------------------------
+| masked_mse | 0.000247 |
+| mse_wav    | 0.00633  |
+| mse_wav_q0 | 0.0133   |
+| mse_wav_q2 | 0.0391   |
+| samples    | 4.9e+03  |
+| step       | 4.9e+03  |
+-------------------------
+[Rank 0] Step 4900 — processed 4900 samples.
+[Step 5000] Step time: 1.04s | Avg per step: 0.98s | Total elapsed: 81.7 min
+-------------------------
+| masked_mse | 0.000238 |
+| mse_wav    | 0.00588  |
+| mse_wav_q0 | 0.0135   |
+| mse_wav_q2 | 0.0361   |
+| samples    | 5e+03    |
+| step       | 5e+03    |
+-------------------------
+[Rank 0] Step 5000 — processed 5000 samples.
+Saving model...
+Traceback (most recent call last):
+  File "/home/vkb444/masters/tooth-diffusion/scripts/generation_train.py", line 207, in <module>
+    main()
+  File "/home/vkb444/masters/tooth-diffusion/scripts/generation_train.py", line 149, in main
+    ).run_loop()
+      ^^^^^^^^^^
+  File "/home/vkb444/masters/tooth-diffusion/guided_diffusion/train_util.py", line 269, in run_loop
+    self.save()
+  File "/home/vkb444/masters/tooth-diffusion/guided_diffusion/train_util.py", line 447, in save
+    save_checkpoint(0, self.model.state_dict())
+  File "/home/vkb444/masters/tooth-diffusion/guided_diffusion/train_util.py", line 442, in save_checkpoint
+    raise ValueError(f'dataset {self.dataset} not implemented')
+ValueError: dataset mri not implemented
