@@ -47,6 +47,7 @@ class TrainLoop:
         lr_anneal_steps=0,
         dataset='tooth',
         summary_writer=None,
+        wandb_run=None,
         mode='default',
         loss_level='image',
         target=None,
@@ -59,6 +60,7 @@ class TrainLoop:
         self.conditioning_image = conditioning_image
         self.lambda_mask = lambda_mask
         self.summary_writer = summary_writer
+        self.wandb_run = wandb_run
         self.mode = mode
         self.model = model
         self.diffusion = diffusion
@@ -215,6 +217,39 @@ class TrainLoop:
                         midplane = sample[0, ch, :, :, image_size // 2]
                         self.summary_writer.add_image('sample/{}'.format(names[ch]), midplane.unsqueeze(0),
                                                     global_step=self.step + self.resume_step)
+                    # Also log images to wandb if enabled
+                    if self.wandb_run is not None:
+                        try:
+                            import wandb
+                            imgs = []
+                            # x_0 image
+                            arr = midplane.detach().cpu().numpy()
+                            arr = (arr - arr.min()) / (arr.max() - arr.min() + 1e-8)
+                            arr = (arr * 255).astype('uint8')
+                            imgs.append(wandb.Image(arr, caption='sample/x_0'))
+                            # wavelet channels
+                            image_size = sample.size()[2]
+                            for ch in range(8):
+                                mid = sample[0, ch, :, :, image_size // 2]
+                                mid_arr = mid.detach().cpu().numpy()
+                                mid_arr = (mid_arr - mid_arr.min()) / (mid_arr.max() - mid_arr.min() + 1e-8)
+                                mid_arr = (mid_arr * 255).astype('uint8')
+                                imgs.append(wandb.Image(mid_arr, caption=f'sample/{names[ch]}'))
+                            self.wandb_run.log({"samples": imgs}, step=self.step + self.resume_step)
+                        except Exception:
+                            pass
+            # Log scalars to wandb if enabled (even if no tensorboard)
+            if self.wandb_run is not None:
+                try:
+                    import wandb
+                    self.wandb_run.log({
+                        'time/load': float(t_load),
+                        'time/forward': float(t_fwd),
+                        'time/total': float(t_total),
+                        'loss/MSE': float(avg_loss.item()),
+                    }, step=self.step + self.resume_step)
+                except Exception:
+                    pass
 
             if self.step % self.log_interval == 0 and (not dist.is_initialized() or self.rank == 0):
                 step_elapsed = time.time() - step_start_time

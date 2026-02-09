@@ -62,6 +62,18 @@ def main():
     else:
         logger.configure()
 
+    # Initialize wandb if requested (only on rank 0)
+    wandb_run = None
+    if args.use_wandb and rank == 0:
+        try:
+            import wandb
+            wandb_run = wandb.init(project=args.wandb_project or None,
+                                   entity=args.wandb_entity or None,
+                                   name=args.wandb_run_name or None,
+                                   config=vars(args))
+        except Exception as e:
+            logger.log(f"Failed to initialize wandb: {e}")
+
     logger.log(f"Rank {rank}/{world_size}: Creating model and diffusion...")
     arguments = args_to_dict(args, model_and_diffusion_defaults().keys())
     
@@ -128,6 +140,7 @@ def main():
         lr_anneal_steps=args.lr_anneal_steps,
         dataset=args.dataset,
         summary_writer=summary_writer,
+        wandb_run=wandb_run,
         mode='default',
         target=args.target,
         training_mode=args.training_mode,
@@ -166,6 +179,10 @@ def create_argparser():
         dataset='tooth',
         use_tensorboard=True,
         tensorboard_path='',  # set path to existing logdir for resuming
+        use_wandb=False,
+        wandb_project='tooth-diffusion',
+        wandb_entity='',
+        wandb_run_name='',
         devices=[0],
         dims=3,
         learn_sigma=False,
