@@ -31,19 +31,25 @@ class ToothVolumes(torch.utils.data.Dataset):
         #Check for meta data
         if not os.path.exists(self.metadata_path):
             raise FileNotFoundError(f"metadata.csv no found at {self.metadata_path}")
-        self.metadata = pd.read_excel(self.metadata_path)
+        self.metadata = pd.read_csv(self.metadata_path)
         self.metadata.columns = self.metadata.columns.str.strip()  # removes leading/trailing spaces
      
         for f in os.listdir(self.image_dir):
             if not f.endswith(".nii.gz"):
                 continue
-            label_path = os.path.join(self.label_dir, f)
-            image_path = os.path.join(self.image_dir, f)
+            # Some image files have a suffix like '_0000.nii.gz' while label files use the basename without that suffix.
+            image_fname = f
+            if f.endswith('_0000.nii.gz'):
+                label_fname = f.replace('_0000.nii.gz', '.nii.gz')
+            else:
+                label_fname = f
+            label_path = os.path.join(self.label_dir, label_fname)
+            image_path = os.path.join(self.image_dir, image_fname)
             if os.path.exists(label_path):
                 self.database.append({
                     "image": image_path,
                     "label": label_path,
-                    "name": f
+                    "name": image_fname
                 })
         print(f"Found {len(self.database)} samples in '{mode}' set.")
       
@@ -63,9 +69,14 @@ class ToothVolumes(torch.utils.data.Dataset):
         label_np[label_np > 32] = 0 # Ensure labels are in the range 0-32
 
         # Name and conditions
-        filename = os.path.basename(filedict['name']) 
-        basename = filename  
-        row_metadata = self.metadata[self.metadata['PatientID_Date.nii.gz'] == basename]
+        filename = os.path.basename(filedict['name'])
+        basename = filename
+        # Extract basename without extension and suffix (e.g., 002_S_0295_I45108 from 002_S_0295_I45108_0000.nii.gz)
+        if filename.endswith('_0000.nii.gz'):
+            basename_without_ext = filename.replace('.nii.gz', '').rsplit('_', 1)[0]
+        else:
+            basename_without_ext = filename.replace('.nii.gz', '')
+        row_metadata = self.metadata[self.metadata['BASENAME'] == basename_without_ext]
         if row_metadata.empty:
             raise KeyError(f"{basename} not found in metadata")
         

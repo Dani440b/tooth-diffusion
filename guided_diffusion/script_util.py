@@ -22,7 +22,7 @@ def diffusion_defaults():
         predict_xstart=False,
         rescale_timesteps=False,
         rescale_learned_sigmas=False,
-        dataset='tooth',
+        dataset='mri',
         dims=2,
         num_groups=32,
         in_channels=1,

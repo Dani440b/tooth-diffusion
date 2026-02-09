@@ -70,7 +70,7 @@ def main():
     schedule_sampler = create_named_schedule_sampler(
         args.schedule_sampler, diffusion, maxt=args.diffusion_steps)
 
-    if args.dataset == 'tooth':
+    if args.dataset == 'mri':
         assert args.image_size in [256], "We currently just support image sizes 256"
         ds = ToothVolumes(
             directory=args.data_dir,
@@ -84,7 +84,7 @@ def main():
         )
 
     else:
-        print("We currently just support the datasets: tooth")
+        print("We currently just support the datasets: mri")
 
     logger.log(f"Rank {rank}: Creating dataset...")
     sampler = DistributedSampler(ds, num_replicas=world_size, rank=rank, shuffle=True)
