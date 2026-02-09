@@ -328,8 +328,17 @@ class TrainLoop:
             else:
                 micro_condition = None
             
-            micro_tooth_presence = batch['tooth_presence'][i: i + self.microbatch].to(self.device)
-            micro_label = batch['label'][i: i + self.microbatch].to(self.device) # The mask label for teeth used for loss
+            # Some datasets (MRI) may not provide tooth-specific fields.
+            # fall back to sensible defaults when keys are missing.
+            if 'tooth_presence' in batch:
+                micro_tooth_presence = batch['tooth_presence'][i: i + self.microbatch].to(self.device)
+            else:
+                micro_tooth_presence = th.zeros((micro_target.shape[0],), device=self.device)
+
+            if 'label' in batch:
+                micro_label = batch['label'][i: i + self.microbatch].to(self.device) # The mask label used for masked loss
+            else:
+                micro_label = None
             if cond is not None:
                 micro_cond = {k: v[i: i + self.microbatch].to(self.device) for k, v in cond.items()}
             else:
@@ -433,13 +442,13 @@ class TrainLoop:
         def save_checkpoint(rate, state_dict):
             if not dist.is_initialized() or dist.get_rank() == 0:
                 logger.log("Saving model...")
-                if self.dataset == 'tooth':
-                    cond_str = "none"
-                    if self.conditioning_image is not None and self.conditioning_image != "none":
-                        cond_str = "tooth"
-                    filename = f"tooth_target_tooth_cond_{cond_str}_{(self.step+self.resume_step):06d}.pt"
-                else:
-                    raise ValueError(f'dataset {self.dataset} not implemented')
+                # Build a generic filename that encodes dataset, target and conditioning.
+                cond_str = "none"
+                if self.conditioning_image is not None and self.conditioning_image != "none":
+                    cond_str = str(self.conditioning_image)
+                dataset_str = str(self.dataset)
+                target_str = str(self.target) if self.target is not None else "target"
+                filename = f"{dataset_str}_target_{target_str}_cond_{cond_str}_{(self.step+self.resume_step):06d}.pt"
 
                 with bf.BlobFile(bf.join(get_blob_logdir(), 'checkpoints', filename), "wb") as f:
                     th.save(state_dict, f)
@@ -450,11 +459,14 @@ class TrainLoop:
         #The opt is hardcoded to tooth now, can be adjusted if name of dataset changes, or expanded if necesarry.
         if not dist.is_initialized() or dist.get_rank() == 0:
             checkpoint_dir = os.path.join(logger.get_dir(), 'checkpoints')
-            if self.dataset == "tooth":
-                cond_str = "none"
-                if self.conditioning_image is not None and self.conditioning_image != "none":
-                    cond_str = "tooth"
-                optfilename = f"opt_tooth_target_tooth_cond_{cond_str}_{(self.step + self.resume_step):06d}.pt"
+            os.makedirs(checkpoint_dir, exist_ok=True)
+            # Generic optimizer filename matching the model filename convention
+            cond_str = "none"
+            if self.conditioning_image is not None and self.conditioning_image != "none":
+                cond_str = str(self.conditioning_image)
+            dataset_str = str(self.dataset)
+            target_str = str(self.target) if self.target is not None else "target"
+            optfilename = f"opt_{dataset_str}_target_{target_str}_cond_{cond_str}_{(self.step + self.resume_step):06d}.pt"
             with bf.BlobFile(
                 bf.join(checkpoint_dir, optfilename),
                 "wb",
