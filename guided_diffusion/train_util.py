@@ -309,6 +309,21 @@ class TrainLoop:
             self.opt.step()
         self._anneal_lr()
         self.log_step()
+        
+        # Log norm metrics to wandb
+        if self.wandb_run is not None and self.rank == 0:
+            try:
+                import wandb
+                norms_dict = {
+                    'norms/param_max': info.get('norm/param_max', 0.0),
+                    'norms/grad_max': info.get('norm/grad_max', 0.0),
+                }
+                if 'scale' in info:
+                    norms_dict['fp16/grad_scale'] = info['scale']
+                self.wandb_run.log(norms_dict, step=self.step + self.resume_step)
+            except Exception:
+                pass
+        
         return lossmse, sample, sample_idwt
 
     def forward_backward(self, batch, cond, label=None):
@@ -407,6 +422,33 @@ class TrainLoop:
                     self.summary_writer.add_scalar('loss/masked_mse', masked_mse.item(), global_step=self.step + self.resume_step)
                     logger.logkv_mean("masked_mse", masked_mse.item())
                 log_loss_dict(self.diffusion, t, {"mse_wav": mse_wav * weights.to(self.device)})
+                
+                # Log all wavelet losses and quartile losses to wandb
+                if self.wandb_run is not None:
+                    try:
+                        import wandb
+                        wavelet_names = ["LLL", "LLH", "LHL", "LHH", "HLL", "HLH", "HHL", "HHH"]
+                        wandb_log_dict = {}
+                        # Log per-subband wavelet losses
+                        for ch_idx, ch_name in enumerate(wavelet_names):
+                            wandb_log_dict[f'loss/mse_wav_{ch_name}'] = mse_wav[ch_idx].item()
+                        # Log masked loss if present
+                        if masked_mse is not None:
+                            wandb_log_dict['loss/masked_mse'] = masked_mse.item()
+                        # Log quartile losses
+                        for sub_t, sub_loss in zip(t.cpu().numpy(), (mse_wav * weights.to(self.device)).detach().cpu().numpy()):
+                            quartile = int(4 * sub_t / self.diffusion.num_timesteps)
+                            key = f'loss/mse_wav_q{quartile}'
+                            if key not in wandb_log_dict:
+                                wandb_log_dict[key] = []
+                            wandb_log_dict[key].append(float(sub_loss))
+                        # Average quartile losses
+                        for key in list(wandb_log_dict.keys()):
+                            if key.startswith('loss/mse_wav_q') and isinstance(wandb_log_dict[key], list):
+                                wandb_log_dict[key] = sum(wandb_log_dict[key]) / len(wandb_log_dict[key])
+                        self.wandb_run.log(wandb_log_dict, step=self.step + self.resume_step)
+                    except Exception:
+                        pass
                 
             loss = (losses["mse_wav"] * weights).mean()
         
