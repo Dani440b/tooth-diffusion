@@ -66,7 +66,11 @@ class ToothVolumes(torch.utils.data.Dataset):
         image_np = self.normalize_image(image_np)
         label_np = label_np.astype(np.uint8)
         
-        label_np[label_np > 32] = 0 # Ensure labels are in the range 0-32
+        # Create brain mask: anything with label > 0 is brain
+        brain_mask = (label_np > 0).astype(np.float32)
+        
+        # Apply brain mask to image: zero out non-brain regions
+        image_np_masked = image_np * brain_mask
 
         # Name and conditions
         filename = os.path.basename(filedict['name'])
@@ -82,11 +86,9 @@ class ToothVolumes(torch.utils.data.Dataset):
         
         row_metadata = row_metadata.iloc[0] # Convert to Series
         
-        # Vector 1: Tooth presence 1-32 teeth
+        # Vector 1: Tooth presence (MRI doesn't have teeth, so always zero)
+        # Keep for backward compatibility with model
         tooth_presence = torch.zeros(32, dtype=torch.float32)
-        for i in range(1, 33):
-            if (label_np == i).any():
-                tooth_presence[i - 1] = 1.0
         
         # Vector 2: Diagnosis (one-hot encoding)
         diagnosis_mapping = {'CN': 0, 'MCI': 1, 'AD': 2}  # CN, MCI, AD are common in ADNI
@@ -107,54 +109,20 @@ class ToothVolumes(torch.utils.data.Dataset):
             "diagnosis": diagnosis_onehot,
             "age": age_tensor,
             "sex": sex_tensor,
+            "brain_mask": torch.tensor(brain_mask, dtype=torch.float32),  # Store mask for reference
         }
+
         
         # Make copy to ensure that it doesn't modify each other
-        target_image_np = image_np.copy()
-        target_label_np = label_np.copy()
-        cond_image_np = image_np.copy()
-        cond_label_np = label_np.copy()
+        # Use masked image (with brain mask applied) for training
+        target_image_np = image_np_masked.copy()
+        target_label_np = brain_mask.copy()
+        cond_image_np = image_np_masked.copy()
+        cond_label_np = brain_mask.copy()
 
-        present_indices = [i for i in range(32) if tooth_presence[i] == 1]
+        # For MRI, skip tooth-specific augmentation (no teeth in MRI)
+        # The augment_missing_teeth and reconstruct_3_mode flags are for tooth data only
 
-        if self.mode == 'train':
-            if self.reconstruct_3_mode:
-                scenario = np.random.choice(["regular", "remove", "add"], p=[1/3, 1/3, 1/3])
-                if scenario == "remove" and present_indices:
-                    max_remove = max(1, int(np.ceil(0.5 * len(present_indices))))
-                    num = np.random.randint(1, max_remove + 1)
-                    removed_teeth = np.random.choice(present_indices, num, replace=False)
-                    # Remove the teeth from the target image, KEEP original label, so we can we penalize for not removing them
-                    # Remove tooth from presence vector, so we can penalize for not removing them
-                    target_image_np = inpaint_teeth(target_image_np, target_label_np, [idx+1 for idx in removed_teeth])
-                    for idx in removed_teeth:
-                        vectors["tooth_presence"][idx] = 0.0
-                        
-                        
-                elif scenario == "add" and present_indices:
-                    max_remove = max(1, int(np.ceil(0.5 * len(present_indices))))
-                    num = np.random.randint(1, max_remove + 1)
-                    removed_teeth = np.random.choice(present_indices, num, replace=False)
-                    # Remove the teeth from the cond image, KEEP original label, so we can we penalize for not removing them
-                    # Keep original vector precence, so we can penalize for not adding them
-                    cond_image_np = inpaint_teeth(cond_image_np, cond_label_np, [idx+1 for idx in removed_teeth])
-                    for idx in removed_teeth:
-                        cond_label_np[cond_label_np == (idx+1)] = 0
-                        
-                # regular: do nothing
-                else:
-                    pass
-            elif self.augment_missing_teeth:
-                if np.random.rand() < 0.5 and present_indices:
-                    max_remove = max(1, int(np.ceil(0.50 * len(present_indices))))
-                    num = np.random.randint(1, max_remove + 1)
-                    removed_teeth = np.random.choice(present_indices, num, replace=False)
-                    target_image_np = inpaint_teeth(target_image_np, target_label_np, [idx+1 for idx in removed_teeth])
-                    for idx in removed_teeth:
-                        target_label_np[target_label_np == (idx+1)] = 0
-                        vectors["tooth_presence"][idx] = 0.0
-
-        
         if not self.mode == 'fake':
             image_tensor = torch.Tensor(target_image_np)
             label_tensor = torch.Tensor(target_label_np)
@@ -217,6 +185,7 @@ class ToothVolumes(torch.utils.data.Dataset):
                 "diagnosis": vectors["diagnosis"],
                 "age": vectors["age"],
                 "sex": vectors["sex"],
+                "brain_mask": vectors.get("brain_mask", torch.ones_like(label)),
             }
         return {
             "image": image,
@@ -227,6 +196,7 @@ class ToothVolumes(torch.utils.data.Dataset):
             "diagnosis": vectors["diagnosis"],
             "age": vectors["age"],
             "sex": vectors["sex"],
+            "brain_mask": vectors.get("brain_mask", torch.ones_like(label)),
         }
     def __len__(self):
         return len(self.database)
