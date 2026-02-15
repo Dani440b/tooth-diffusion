@@ -477,6 +477,11 @@ class WavUNetModel(nn.Module):
 
         # Taking from improved_diffusion unet openAI with class.
         self.tooth_presence_embedding = nn.Linear(32, time_embed_dim)
+        
+        # Clinical conditioning embeddings (MRI metadata)
+        self.diagnosis_embedding = nn.Linear(3, time_embed_dim)  # 3-class diagnosis (CN, MCI, AD)
+        self.age_embedding = nn.Linear(1, time_embed_dim)        # Age (normalized)
+        self.sex_embedding = nn.Linear(1, time_embed_dim)        # Sex (M/F)
 
             
         ###############
@@ -744,20 +749,17 @@ class WavUNetModel(nn.Module):
                 print("Error here 3")
     """
     
-    def forward(self, x, timesteps, tooth_presence=None):
+    def forward(self, x, timesteps, tooth_presence=None, diagnosis=None, age=None, sex=None):
         """
         Apply the model to an input batch.
 
         :param x: an [N x C x ...] Tensor of inputs.
         :param timesteps: a 1-D batch of timesteps.
-        :param zemb: an [N] Tensor of labels, if class-conditional.
+        :param tooth_presence: an [N x 32] Tensor of tooth presence indicators.
+        :param diagnosis: an [N x 3] Tensor one-hot encoded for disease (CN, MCI, AD).
+        :param age: an [N x 1] Tensor of age normalized to [0, 1].
+        :param sex: an [N x 1] Tensor of sex (0=F, 1=M).
         :return: an [N x C x ...] Tensor of outputs.
-        
-        new param / conditional:
-        :param age: [N] Tensor of age divided by 100
-        :param sex: an [N x 2] Tensor one hot encoded sex [1,0] for male and otherwise [0, 1]
-        :param disease: an [N x 3] Tensor one hot encoded for disease, [1,0,0] for AD
-        
         """
         
         hs = []  # Save skip-connections here
@@ -766,6 +768,12 @@ class WavUNetModel(nn.Module):
         
         if tooth_presence is not None:
             emb += self.tooth_presence_embedding(tooth_presence)
+        if diagnosis is not None:
+            emb += self.diagnosis_embedding(diagnosis)
+        if age is not None:
+            emb += self.age_embedding(age)
+        if sex is not None:
+            emb += self.sex_embedding(sex)
         
         h = x
         self.hs_shapes = []

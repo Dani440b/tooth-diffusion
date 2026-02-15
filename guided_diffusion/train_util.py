@@ -354,6 +354,23 @@ class TrainLoop:
                 micro_label = batch['label'][i: i + self.microbatch].to(self.device) # The mask label used for masked loss
             else:
                 micro_label = None
+            
+            # Extract clinical conditioning (MRI metadata)
+            if 'diagnosis' in batch:
+                micro_diagnosis = batch['diagnosis'][i: i + self.microbatch].to(self.device)
+            else:
+                micro_diagnosis = None
+            
+            if 'age' in batch:
+                micro_age = batch['age'][i: i + self.microbatch].to(self.device)
+            else:
+                micro_age = None
+            
+            if 'sex' in batch:
+                micro_sex = batch['sex'][i: i + self.microbatch].to(self.device)
+            else:
+                micro_sex = None
+            
             if cond is not None:
                 micro_cond = {k: v[i: i + self.microbatch].to(self.device) for k, v in cond.items()}
             else:
@@ -361,6 +378,12 @@ class TrainLoop:
             
             micro_cond['tooth_presence'] = micro_tooth_presence
             micro_cond['condition'] = micro_condition # Conditioning image
+            if micro_diagnosis is not None:
+                micro_cond['diagnosis'] = micro_diagnosis
+            if micro_age is not None:
+                micro_cond['age'] = micro_age
+            if micro_sex is not None:
+                micro_cond['sex'] = micro_sex
 
             last_batch = (i + self.microbatch) >= batch[target_img].shape[0]
             t, weights = self.schedule_sampler.sample(micro_target.shape[0], self.device)

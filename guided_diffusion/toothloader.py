@@ -88,7 +88,26 @@ class ToothVolumes(torch.utils.data.Dataset):
             if (label_np == i).any():
                 tooth_presence[i - 1] = 1.0
         
-        vectors = {"tooth_presence": tooth_presence}
+        # Vector 2: Diagnosis (one-hot encoding)
+        diagnosis_mapping = {'CN': 0, 'MCI': 1, 'AD': 2}  # CN, MCI, AD are common in ADNI
+        diagnosis = row_metadata.get('Screen.Diagnosis', 'CN')
+        diagnosis_onehot = torch.zeros(3, dtype=torch.float32)
+        diagnosis_onehot[diagnosis_mapping.get(diagnosis, 0)] = 1.0
+        
+        # Vector 3: Age (normalize to [0, 1])
+        age = float(row_metadata.get('Age', 75)) / 100.0  # Assume age range 0-100
+        age_tensor = torch.tensor([age], dtype=torch.float32)
+        
+        # Vector 4: Sex (0=F, 1=M)
+        sex = row_metadata.get('Sex', 'M')
+        sex_tensor = torch.tensor([1.0 if sex == 'M' else 0.0], dtype=torch.float32)
+        
+        vectors = {
+            "tooth_presence": tooth_presence,
+            "diagnosis": diagnosis_onehot,
+            "age": age_tensor,
+            "sex": sex_tensor,
+        }
         
         # Make copy to ensure that it doesn't modify each other
         target_image_np = image_np.copy()
@@ -195,6 +214,9 @@ class ToothVolumes(torch.utils.data.Dataset):
                 "cond_label": cond_label,
                 "name": [basename],
                 "tooth_presence": vectors["tooth_presence"],
+                "diagnosis": vectors["diagnosis"],
+                "age": vectors["age"],
+                "sex": vectors["sex"],
             }
         return {
             "image": image,
@@ -202,6 +224,9 @@ class ToothVolumes(torch.utils.data.Dataset):
             "cond_image": cond_image,
             "cond_label": cond_label,
             "tooth_presence": vectors["tooth_presence"],
+            "diagnosis": vectors["diagnosis"],
+            "age": vectors["age"],
+            "sex": vectors["sex"],
         }
     def __len__(self):
         return len(self.database)
