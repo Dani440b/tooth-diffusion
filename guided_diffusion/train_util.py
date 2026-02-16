@@ -301,7 +301,6 @@ class TrainLoop:
                            "\n -> update will be skipped in grad_scaler.step()", level=logger.WARN)
 
         if self.use_fp16:
-            print("Use fp16 ...")
             self.grad_scaler.step(self.opt)
             self.grad_scaler.update()
             info['scale'] = self.grad_scaler.get_scale()
