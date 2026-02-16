@@ -343,13 +343,6 @@ class TrainLoop:
             else:
                 micro_condition = None
             
-            # Some datasets (MRI) may not provide tooth-specific fields.
-            # fall back to sensible defaults when keys are missing.
-            if 'tooth_presence' in batch:
-                micro_tooth_presence = batch['tooth_presence'][i: i + self.microbatch].to(self.device)
-            else:
-                micro_tooth_presence = th.zeros((micro_target.shape[0],), device=self.device)
-
             if 'label' in batch:
                 micro_label = batch['label'][i: i + self.microbatch].to(self.device) # The mask label used for masked loss
             else:
@@ -376,7 +369,6 @@ class TrainLoop:
             else:
                 micro_cond = {}
             
-            micro_cond['tooth_presence'] = micro_tooth_presence
             micro_cond['condition'] = micro_condition # Conditioning image
             if micro_diagnosis is not None:
                 micro_cond['diagnosis'] = micro_diagnosis

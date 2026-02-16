@@ -47,6 +47,37 @@ def main():
         device = th.device(f'cuda:{local_rank}')
     else:
         device = th.device('cpu')
+
+    if args.auto_vram and use_cuda and rank == 0:
+        props = th.cuda.get_device_properties(device)
+        total_gb = props.total_memory / (1024 ** 3)
+        # Simple heuristic by total VRAM
+        if total_gb <= 16:
+            args.num_channels = 16
+            args.channel_mult = "1,1,2,2,4,4"
+            args.batch_size = 1
+            args.microbatch = 1
+        elif total_gb <= 24:
+            args.num_channels = 32
+            args.channel_mult = "1,2,2,4,4,4"
+            args.batch_size = 1
+            args.microbatch = 1
+        elif total_gb <= 40:
+            args.num_channels = 64
+            args.channel_mult = "1,2,2,4,4,4"
+            args.batch_size = 1
+            args.microbatch = 1
+        else:
+            args.num_channels = 64
+            args.channel_mult = "1,2,2,4,4,4"
+        args.use_fp16 = True
+        args.use_checkpoint = True
+        logger.log(
+            f"Auto VRAM tuning: {total_gb:.1f} GB -> "
+            f"channels={args.num_channels}, channel_mult={args.channel_mult}, "
+            f"batch_size={args.batch_size}, microbatch={args.microbatch}, "
+            f"fp16={args.use_fp16}, checkpoint={args.use_checkpoint}"
+        )
     
     summary_writer = None
     if args.use_tensorboard and rank == 0:
@@ -100,8 +131,6 @@ def main():
             normalize=(lambda x: 2 * x - 1) if args.renormalize else None,
             mode='train',
             img_size=args.image_size,
-            augment_missing_teeth=args.augment_missing_teeth,
-            reconstruct_3_mode=args.reconstruct_3_mode,
         )
 
     else:
@@ -156,8 +185,6 @@ def create_argparser():
         data_dir="",
         meta_data="",
         target="",
-        augment_missing_teeth=False,
-        reconstruct_3_mode=False,
         training_mode="train",
         conditioning_image="none",
         schedule_sampler="uniform",
@@ -176,6 +203,7 @@ def create_argparser():
         resume_step=0,
         use_fp16=False,
         fp16_scale_growth=1e-3,
+        auto_vram=False,
         dataset='tooth',
         use_tensorboard=True,
         tensorboard_path='',  # set path to existing logdir for resuming

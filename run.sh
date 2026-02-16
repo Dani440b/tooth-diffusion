@@ -3,7 +3,7 @@ GPU=0;                    # gpu to use
 NUMBERofGPUS=1            # number of gpus to use, should reflect what you specify on GPU variable
 MASTERPORT=12345;          # master port for distributed training
 SEED=42;                  # randomness seed for sampling
-CHANNELS=64;              # number of model base channels (we use 64 for all experiments)
+CHANNELS=32;              # number of model base channels (lower to reduce VRAM)
 DATASET='mri';            
 MODEL='ours_wnet_256';    # 'ours_wnet_256' currently only supported for wnet_256
 
@@ -12,10 +12,6 @@ MODE=${1:-train}          # train vs sample
 TARGET=${2:-mri}        
 RESUME_CHECKPOINT=${3:-}  
 CONDITIONING_IMAGE='none'
-
-# Settings for training 
-AUGMENT_MISSING=False; # Whether to augment missing teeth for training done for model without conditioning image
-RECONSTRUCT_3_MODE=False; # For training the model with 3 different scenarios, regular, add and removal of teeth done for model with conditioning image
 
 # settings for sampling/inference
 ITERATIONS=1200;        # training iteration (as a multiple of 1k) checkpoint to use for sampling
@@ -92,18 +88,19 @@ TRAIN="
 --data_dir=${DATA_DIR}
 --meta_data=${META_DATA}
 --target=${TARGET}
---augment_missing_teeth=${AUGMENT_MISSING}
---reconstruct_3_mode=${RECONSTRUCT_3_MODE}
 --training_mode=${MODE}
 --conditioning_image=${CONDITIONING_IMAGE}
 --resume_checkpoint=${RESUME_CHECKPOINT}
 --resume_step=0
 --image_size=${IMAGE_SIZE}
---use_fp16=False
+--use_fp16=True
+--use_checkpoint=True
+--microbatch=1
+--auto_vram=True
 --lr=1e-5
 --lambda_mask=10.0
 --save_interval=5000
---num_workers=10
+--num_workers=4
 --devices=${GPU}
 "
 SAMPLE="

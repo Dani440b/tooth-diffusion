@@ -6,17 +6,11 @@ import os
 import os.path
 import nibabel
 import pandas as pd
-from scipy import ndimage
-from scipy.ndimage import binary_dilation, distance_transform_edt, gaussian_filter
-from skimage.morphology import ball
 
 class ToothVolumes(torch.utils.data.Dataset):
-    def __init__(self, directory, metadata_path, test_flag=False, normalize=None, mode='train', img_size=256, augment_missing_teeth=False, reconstruct_3_mode=False):
+    def __init__(self, directory, metadata_path, test_flag=False, normalize=None, mode='train', img_size=256):
         super().__init__()
         self.mode = mode
-        # Training augmentation only one of the modes should be True
-        self.augment_missing_teeth = augment_missing_teeth        
-        self.reconstruct_3_mode = reconstruct_3_mode
 
         self.directory = os.path.expanduser(directory)
         self.metadata_path = os.path.expanduser(metadata_path)
@@ -86,11 +80,7 @@ class ToothVolumes(torch.utils.data.Dataset):
         
         row_metadata = row_metadata.iloc[0] # Convert to Series
         
-        # Vector 1: Tooth presence (MRI doesn't have teeth, so always zero)
-        # Keep for backward compatibility with model
-        tooth_presence = torch.zeros(32, dtype=torch.float32)
-        
-        # Vector 2: Diagnosis (one-hot encoding)
+        # Vector 1: Diagnosis (one-hot encoding)
         diagnosis_mapping = {'CN': 0, 'MCI': 1, 'AD': 2}  # CN, MCI, AD are common in ADNI
         diagnosis = row_metadata.get('Screen.Diagnosis', 'CN')
         diagnosis_onehot = torch.zeros(3, dtype=torch.float32)
@@ -105,11 +95,10 @@ class ToothVolumes(torch.utils.data.Dataset):
         sex_tensor = torch.tensor([1.0 if sex == 'M' else 0.0], dtype=torch.float32)
         
         vectors = {
-            "tooth_presence": tooth_presence,
             "diagnosis": diagnosis_onehot,
             "age": age_tensor,
             "sex": sex_tensor,
-            "brain_mask": torch.tensor(brain_mask, dtype=torch.float32),  # Store mask for reference
+            "brain_mask": torch.tensor(brain_mask, dtype=torch.float32),
         }
 
         
@@ -167,12 +156,6 @@ class ToothVolumes(torch.utils.data.Dataset):
 
             cond_label[upper] = 17 - cond_label[upper]
             cond_label[lower] = 49 - cond_label[lower]
-            
-            # flip tooth presence vector
-            tooth_presence_flipped = torch.zeros_like(vectors["tooth_presence"])
-            tooth_presence_flipped[:16] = vectors["tooth_presence"][:16].flip(0)
-            tooth_presence_flipped[16:] = vectors["tooth_presence"][16:].flip(0)
-            vectors["tooth_presence"] = tooth_presence_flipped
                         
         if self.mode in ['eval', 'fake']:
             return {
@@ -181,7 +164,6 @@ class ToothVolumes(torch.utils.data.Dataset):
                 "cond_image": cond_image,
                 "cond_label": cond_label,
                 "name": [basename],
-                "tooth_presence": vectors["tooth_presence"],
                 "diagnosis": vectors["diagnosis"],
                 "age": vectors["age"],
                 "sex": vectors["sex"],
@@ -192,7 +174,6 @@ class ToothVolumes(torch.utils.data.Dataset):
             "label": label,
             "cond_image": cond_image,
             "cond_label": cond_label,
-            "tooth_presence": vectors["tooth_presence"],
             "diagnosis": vectors["diagnosis"],
             "age": vectors["age"],
             "sex": vectors["sex"],
@@ -200,34 +181,3 @@ class ToothVolumes(torch.utils.data.Dataset):
         }
     def __len__(self):
         return len(self.database)
-
-# Inpainting function to remove teeth
-def inpaint_teeth(image_np, label_np, tooth_ids, sphere_radius=2):
-    struct = ball(sphere_radius)
-
-    tooth_mask = np.zeros_like(label_np, dtype=bool)
-    for tooth_id in tooth_ids:
-        tooth_mask |= (label_np == tooth_id)
-
-    tooth_mask = binary_dilation(tooth_mask, structure=struct)
-    teeth_mask = binary_dilation(label_np > 0, structure=struct)
-
-    V1 = image_np.copy()
-    V1[teeth_mask] = np.nan
-
-    missing = np.isnan(V1)
-    dist, (inds_z, inds_y, inds_x) = distance_transform_edt(missing, return_indices=True)
-
-    V2 = image_np.copy()
-    V2[teeth_mask] = image_np[
-        inds_z[teeth_mask],
-        inds_y[teeth_mask],
-        inds_x[teeth_mask]
-    ]
-
-    V2_smooth = gaussian_filter(V2, sigma=1.0)
-
-    inpainted = image_np.copy()
-    inpainted[tooth_mask] = V2_smooth[tooth_mask]
-
-    return inpainted

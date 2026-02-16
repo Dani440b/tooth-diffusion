@@ -296,19 +296,17 @@ class GaussianDiffusion:
         assert t.shape == (B,)
         
         # Extract conditioning vectors
-        tooth_presence = model_kwargs.get('tooth_presence', None)
         diagnosis = model_kwargs.get('diagnosis', None)
         age = model_kwargs.get('age', None)
         sex = model_kwargs.get('sex', None)
 
-        #Cond for tooth generation is either heatmap or heatmap + conditioing image, which is done in the generation_sample scripts. 
+        #Cond for generation (medical image conditioning, etc.) is passed through. 
         if cond is not None:
-            x_cond = th.cat([x, cond], dim=1) # concat the condention to the noise
+            x_cond = th.cat([x, cond], dim=1) # concat the conditioning to the noise
         else:
             x_cond = x
         
         model_output = model(x_cond, self._scale_timesteps(t), 
-                            tooth_presence=tooth_presence, 
                             diagnosis=diagnosis, 
                             age=age, 
                             sex=sex)

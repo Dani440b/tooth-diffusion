@@ -474,10 +474,6 @@ class WavUNetModel(nn.Module):
             nn.SiLU(),
             linear(time_embed_dim, time_embed_dim))
 
-
-        # Taking from improved_diffusion unet openAI with class.
-        self.tooth_presence_embedding = nn.Linear(32, time_embed_dim)
-        
         # Clinical conditioning embeddings (MRI metadata)
         self.diagnosis_embedding = nn.Linear(3, time_embed_dim)  # 3-class diagnosis (CN, MCI, AD)
         self.age_embedding = nn.Linear(1, time_embed_dim)        # Age (normalized)
@@ -749,13 +745,12 @@ class WavUNetModel(nn.Module):
                 print("Error here 3")
     """
     
-    def forward(self, x, timesteps, tooth_presence=None, diagnosis=None, age=None, sex=None):
+    def forward(self, x, timesteps, diagnosis=None, age=None, sex=None):
         """
         Apply the model to an input batch.
 
         :param x: an [N x C x ...] Tensor of inputs.
         :param timesteps: a 1-D batch of timesteps.
-        :param tooth_presence: an [N x 32] Tensor of tooth presence indicators.
         :param diagnosis: an [N x 3] Tensor one-hot encoded for disease (CN, MCI, AD).
         :param age: an [N x 1] Tensor of age normalized to [0, 1].
         :param sex: an [N x 1] Tensor of sex (0=F, 1=M).
@@ -766,8 +761,6 @@ class WavUNetModel(nn.Module):
         input_pyramid = x
         emb = self.time_embed(timestep_embedding(timesteps, self.model_channels))  # Gen sinusoidal timestep embedding
         
-        if tooth_presence is not None:
-            emb += self.tooth_presence_embedding(tooth_presence)
         if diagnosis is not None:
             emb += self.diagnosis_embedding(diagnosis)
         if age is not None:
