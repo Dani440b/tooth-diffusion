@@ -1,0 +1,2 @@
+Logging to ./results
+Auto VRAM tuning: 3.6 GB -> channels=16, channel_mult=1,1,2,2,4,4, batch_size=1, microbatch=1, fp16=True, checkpoint=True

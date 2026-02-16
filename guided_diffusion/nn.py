@@ -97,6 +97,10 @@ def normalization(channels, groups=32):
     :param channels: number of input channels.
     :return: an nn.Module for normalization.
     """
+    # Ensure groups is valid for the number of channels
+    groups = min(groups, channels)
+    while channels % groups != 0:
+        groups = groups // 2
     return GroupNorm32(groups, channels)
 
 

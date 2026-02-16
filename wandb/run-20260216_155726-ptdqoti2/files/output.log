@@ -1,0 +1,19 @@
+Rank 0/1: Creating model and diffusion...
+Traceback (most recent call last):
+  File "/home/daniel/Documents/thesis/tooth-diffusion/scripts/generation_train.py", line 235, in <module>
+    main()
+  File "/home/daniel/Documents/thesis/tooth-diffusion/scripts/generation_train.py", line 112, in main
+    model, diffusion = create_model_and_diffusion(**arguments)
+  File "/home/daniel/Documents/thesis/tooth-diffusion/./guided_diffusion/script_util.py", line 131, in create_model_and_diffusion
+    model = create_model(
+  File "/home/daniel/Documents/thesis/tooth-diffusion/./guided_diffusion/script_util.py", line 252, in create_model
+    return WavUNetModel(
+  File "/home/daniel/Documents/thesis/tooth-diffusion/./guided_diffusion/wunet.py", line 506, in __init__
+    ResBlock(
+  File "/home/daniel/Documents/thesis/tooth-diffusion/./guided_diffusion/wunet.py", line 186, in __init__
+    normalization(channels, self.num_groups),
+  File "/home/daniel/Documents/thesis/tooth-diffusion/./guided_diffusion/nn.py", line 100, in normalization
+    return GroupNorm32(groups, channels)
+  File "/home/daniel/micromamba/envs/wdm/lib/python3.10/site-packages/torch/nn/modules/normalization.py", line 266, in __init__
+    raise ValueError('num_channels must be divisible by num_groups')
+ValueError: num_channels must be divisible by num_groups

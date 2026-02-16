@@ -1,0 +1,6 @@
+{"time":"2026-02-16T16:04:16.027632972+01:00","level":"INFO","msg":"stream: starting","core version":"0.25.0"}
+{"time":"2026-02-16T16:04:16.499249601+01:00","level":"INFO","msg":"stream: created new stream","id":"imdjaurg"}
+{"time":"2026-02-16T16:04:16.49966892+01:00","level":"INFO","msg":"handler: started","stream_id":"imdjaurg"}
+{"time":"2026-02-16T16:04:16.500245749+01:00","level":"INFO","msg":"stream: started","id":"imdjaurg"}
+{"time":"2026-02-16T16:04:16.500268381+01:00","level":"INFO","msg":"writer: started","stream_id":"imdjaurg"}
+{"time":"2026-02-16T16:04:16.50030174+01:00","level":"INFO","msg":"sender: started","stream_id":"imdjaurg"}

@@ -727,7 +727,6 @@ class WavUNetModel(nn.Module):
             # move first half to first device, second half to second device
             self.input_blocks.to(self.devices[0])
             self.time_embed.to(self.devices[0])
-            self.tooth_presence_embedding.to(self.devices[0])
             self.middle_block.to(self.devices[0])  # maybe devices 0
             for k, b in enumerate(self.output_blocks):
                 if k < self.decoder_device_thresh:

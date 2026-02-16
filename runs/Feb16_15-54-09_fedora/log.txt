@@ -1,0 +1,3 @@
+Logging to runs/Feb16_15-54-09_fedora
+Failed to initialize wandb: module 'wandb' has no attribute 'init'
+Rank 0/1: Creating model and diffusion...

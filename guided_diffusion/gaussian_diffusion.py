@@ -1113,7 +1113,9 @@ class GaussianDiffusion:
             model_kwargs = {}
 
         #Extract condition dictiionary from model_kwargs
-        tooth_presence = model_kwargs.get('tooth_presence', None) 
+        diagnosis = model_kwargs.get('diagnosis', None)
+        age = model_kwargs.get('age', None)
+        sex = model_kwargs.get('sex', None)
         
         condition_1 = model_kwargs.get('condition', None) #If conditioing iamge which is concatenated to the input
 
@@ -1139,7 +1141,10 @@ class GaussianDiffusion:
             raise ValueError(f'Invalid mode {mode=}, needs to be "default"')
 
         # Pass our conditions to the iput to the model
-        model_output = model(x_t, self._scale_timesteps(t), tooth_presence=tooth_presence) # Model outputs denoised wavelet subbands
+        model_output = model(x_t, self._scale_timesteps(t), 
+                            diagnosis=diagnosis, 
+                            age=age, 
+                            sex=sex) # Model outputs denoised wavelet subbands
 
         # Inverse wavelet transform the model output
         B, _, H, W, D = model_output.size()

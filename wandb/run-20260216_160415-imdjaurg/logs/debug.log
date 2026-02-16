@@ -1,0 +1,19 @@
+2026-02-16 16:04:15,771 INFO    MainThread:38640 [wandb_setup.py:_flush():81] Current SDK version is 0.25.0
+2026-02-16 16:04:15,771 INFO    MainThread:38640 [wandb_setup.py:_flush():81] Configure stats pid to 38640
+2026-02-16 16:04:15,771 INFO    MainThread:38640 [wandb_setup.py:_flush():81] Loading settings from environment variables
+2026-02-16 16:04:15,771 INFO    MainThread:38640 [wandb_init.py:setup_run_log_directory():717] Logging user logs to /home/daniel/Documents/thesis/tooth-diffusion/wandb/run-20260216_160415-imdjaurg/logs/debug.log
+2026-02-16 16:04:15,771 INFO    MainThread:38640 [wandb_init.py:setup_run_log_directory():718] Logging internal logs to /home/daniel/Documents/thesis/tooth-diffusion/wandb/run-20260216_160415-imdjaurg/logs/debug-internal.log
+2026-02-16 16:04:15,771 INFO    MainThread:38640 [wandb_init.py:init():844] calling init triggers
+2026-02-16 16:04:15,771 INFO    MainThread:38640 [wandb_init.py:init():849] wandb.init called with sweep_config: {}
+config: {'seed': 0, 'data_dir': 'prep_data/train', 'meta_data': 'prep_data/metadata.csv', 'target': 'mri', 'training_mode': 'train', 'conditioning_image': 'none', 'schedule_sampler': 'uniform', 'lr': 1e-05, 'lambda_mask': 10.0, 'weight_decay': 0.0, 'lr_anneal_steps': 0, 'batch_size': 1, 'microbatch': 1, 'beta_min': 0.1, 'beta_max': 20.0, 'ema_rate': '0.9999', 'log_interval': 100, 'save_interval': 5000, 'resume_checkpoint': '', 'resume_step': 0, 'use_fp16': True, 'fp16_scale_growth': 0.001, 'auto_vram': True, 'dataset': 'mri', 'use_tensorboard': True, 'tensorboard_path': '', 'use_wandb': True, 'wandb_project': 'mri_wavelet', 'wandb_entity': 'dklaaby', 'wandb_run_name': 'test_only_brain_and_autovram', 'devices': ['0'], 'dims': 3, 'learn_sigma': False, 'num_groups': 32, 'channel_mult': '1,1,2,2,4,4', 'in_channels': 8, 'out_channels': 8, 'bottleneck_attention': False, 'num_workers': 4, 'mode': 'default', 'renormalize': True, 'additive_skips': False, 'use_freq': True, 'image_size': 256, 'num_channels': 16, 'num_res_blocks': 2, 'num_heads': 1, 'num_heads_upsample': -1, 'num_head_channels': -1, 'attention_resolutions': '', 'dropout': 0.0, 'class_cond': False, 'use_checkpoint': True, 'use_scale_shift_norm': True, 'resblock_updown': True, 'use_new_attention_order': False, 'resample_2d': False, 'predict_xstart': True, 'diffusion_steps': 2, 'noise_schedule': 'vp_sde', 'timestep_respacing': '', 'use_kl': False, 'rescale_timesteps': False, 'rescale_learned_sigmas': False, '_wandb': {}}
+2026-02-16 16:04:15,771 INFO    MainThread:38640 [wandb_init.py:init():892] starting backend
+2026-02-16 16:04:15,998 INFO    MainThread:38640 [wandb_init.py:init():895] sending inform_init request
+2026-02-16 16:04:16,014 INFO    MainThread:38640 [wandb_init.py:init():903] backend started and connected
+2026-02-16 16:04:16,063 INFO    MainThread:38640 [wandb_init.py:init():973] updated telemetry
+2026-02-16 16:04:16,068 INFO    MainThread:38640 [wandb_init.py:init():997] communicating run to backend with 90.0 second timeout
+2026-02-16 16:04:16,778 INFO    MainThread:38640 [wandb_init.py:init():1042] starting run threads in backend
+2026-02-16 16:04:16,883 INFO    MainThread:38640 [wandb_run.py:_console_start():2524] atexit reg
+2026-02-16 16:04:16,883 INFO    MainThread:38640 [wandb_run.py:_redirect():2373] redirect: wrap_raw
+2026-02-16 16:04:16,883 INFO    MainThread:38640 [wandb_run.py:_redirect():2442] Wrapping output streams.
+2026-02-16 16:04:16,883 INFO    MainThread:38640 [wandb_run.py:_redirect():2465] Redirects installed.
+2026-02-16 16:04:16,886 INFO    MainThread:38640 [wandb_init.py:init():1082] run started, returning control to user process
