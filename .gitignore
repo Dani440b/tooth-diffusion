@@ -1,1 +1,4 @@
 prep_data/
+wandb/
+results/
+runs/
