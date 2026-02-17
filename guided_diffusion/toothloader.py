@@ -54,8 +54,8 @@ class ToothVolumes(torch.utils.data.Dataset):
     def __getitem__(self, x):
         filedict = self.database[x]
         
-        image_np = (nibabel.as_closest_canonical(nibabel.load(filedict["image"]))).get_fdata()
-        label_np = (nibabel.as_closest_canonical(nibabel.load(filedict["label"]))).get_fdata()
+        image_np = (nibabel.as_closest_canonical(nibabel.load(filedict["image"]))).get_fdata(dtype=np.float32)
+        label_np = (nibabel.as_closest_canonical(nibabel.load(filedict["label"]))).get_fdata(dtype=np.float32)
 
         image_np = self.normalize_image(image_np)
         label_np = label_np.astype(np.uint8)
@@ -104,38 +104,24 @@ class ToothVolumes(torch.utils.data.Dataset):
         
         # Make copy to ensure that it doesn't modify each other
         # Use masked image (with brain mask applied) for training
-        target_image_np = image_np_masked.copy()
-        target_label_np = brain_mask.copy()
-        cond_image_np = image_np_masked.copy()
-        cond_label_np = brain_mask.copy()
+        target_image_np = np.ascontiguousarray(image_np_masked)
+        target_label_np = np.ascontiguousarray(brain_mask)
+        cond_image_np = np.ascontiguousarray(image_np_masked)
+        cond_label_np = np.ascontiguousarray(brain_mask)
 
         # For MRI, skip tooth-specific augmentation (no teeth in MRI)
         # The augment_missing_teeth and reconstruct_3_mode flags are for tooth data only
 
         if not self.mode == 'fake':
-            image_tensor = torch.Tensor(target_image_np)
-            label_tensor = torch.Tensor(target_label_np)
-
-            cond_image_tensor = torch.Tensor(cond_image_np)
-            cond_label_tensor = torch.Tensor(cond_label_np)
-
-            image = torch.zeros(1, 256, 256, 256)
-            label = torch.zeros(1, 256, 256, 256)
-            cond_image = torch.zeros(1, 256, 256, 256)
-            cond_label = torch.zeros(1, 256, 256, 256)
-
-            image[:, :, :, :] = image_tensor
-            label[:, :, :, :] = label_tensor
-            cond_image[:, :, :, :] = cond_image_tensor
-            cond_label[:, :, :, :] = cond_label_tensor
-
-            label = label.long()
-            cond_label = cond_label.long()
+            image = torch.from_numpy(target_image_np).unsqueeze(0)
+            label = torch.from_numpy(target_label_np).unsqueeze(0).long()
+            cond_image = torch.from_numpy(cond_image_np).unsqueeze(0)
+            cond_label = torch.from_numpy(cond_label_np).unsqueeze(0).long()
         else:
-            image = torch.tensor(image_np, dtype=torch.float32).unsqueeze(0)
-            label = torch.tensor(label_np, dtype=torch.long).unsqueeze(0)
-            cond_image = torch.tensor(cond_image_np, dtype=torch.float32).unsqueeze(0)
-            cond_label = torch.tensor(cond_label_np, dtype=torch.long).unsqueeze(0)
+            image = torch.from_numpy(np.ascontiguousarray(image_np)).unsqueeze(0)
+            label = torch.from_numpy(np.ascontiguousarray(label_np)).unsqueeze(0).long()
+            cond_image = torch.from_numpy(np.ascontiguousarray(cond_image_np)).unsqueeze(0)
+            cond_label = torch.from_numpy(np.ascontiguousarray(cond_label_np)).unsqueeze(0).long()
 
         image = self.normalize(image)
         cond_image = self.normalize(cond_image)     

@@ -184,7 +184,7 @@ class TrainLoop:
                 batch = next(self.iterdatal)
                 cond = {}
                 
-            batch = {k: v.to(self.device) for k, v in batch.items()}
+            batch = {k: v.to(self.device, non_blocking=True) for k, v in batch.items()}
 
             t_fwd = time.time()
             t_load = t_fwd-t

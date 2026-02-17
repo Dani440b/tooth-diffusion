@@ -45,6 +45,13 @@ def main():
     if use_cuda:
         th.cuda.set_device(local_rank)
         device = th.device(f'cuda:{local_rank}')
+        th.backends.cudnn.benchmark = True
+        th.backends.cuda.matmul.allow_tf32 = True
+        th.backends.cudnn.allow_tf32 = True
+        try:
+            th.set_float32_matmul_precision("high")
+        except Exception:
+            pass
     else:
         device = th.device('cpu')
 
@@ -138,14 +145,20 @@ def main():
 
     logger.log(f"Rank {rank}: Creating dataset...")
     sampler = DistributedSampler(ds, num_replicas=world_size, rank=rank, shuffle=True)
-    datal = DataLoader(ds,
-                        batch_size=args.batch_size,
-                        num_workers=args.num_workers,
-                        shuffle=False,
-                        sampler=sampler,
-                        pin_memory=True,
-                        drop_last=True,
-                        )
+    dataloader_kwargs = dict(
+        batch_size=args.batch_size,
+        num_workers=args.num_workers,
+        shuffle=False,
+        sampler=sampler,
+        pin_memory=True,
+        drop_last=True,
+    )
+    if args.num_workers > 0:
+        dataloader_kwargs.update(
+            persistent_workers=True,
+            prefetch_factor=2,
+        )
+    datal = DataLoader(ds, **dataloader_kwargs)
 
     logger.log(f"Rank {rank}: Start training...")
     TrainLoop(
