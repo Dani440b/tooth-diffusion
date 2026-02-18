@@ -1147,7 +1147,7 @@ class GaussianDiffusion:
                             sex=sex) # Model outputs denoised wavelet subbands
 
         # Inverse wavelet transform the model output
-        B, _, D, H, W = model_output.size()
+        B, _, H, W, D = model_output.size()
         model_output_idwt = idwt(model_output[:, 0, :, :, :].unsqueeze(1) * 3.,
                                  model_output[:, 1, :, :, :].unsqueeze(1),
                                  model_output[:, 2, :, :, :].unsqueeze(1),
