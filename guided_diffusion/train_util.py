@@ -222,8 +222,10 @@ class TrainLoop:
                         try:
                             import wandb
                             imgs = []
-                            # x_0 image
-                            arr = midplane.detach().cpu().numpy()
+                            # x_0 image (spatial reconstruction)
+                            image_size = sample_idwt.size()[2]
+                            midplane_x0 = sample_idwt[0, 0, :, :, image_size // 2]
+                            arr = midplane_x0.detach().cpu().numpy()
                             arr = (arr - arr.min()) / (arr.max() - arr.min() + 1e-8)
                             arr = (arr * 255).astype('uint8')
                             imgs.append(wandb.Image(arr, caption='sample/x_0'))

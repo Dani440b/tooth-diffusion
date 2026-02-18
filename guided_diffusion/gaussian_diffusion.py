@@ -1147,15 +1147,15 @@ class GaussianDiffusion:
                             sex=sex) # Model outputs denoised wavelet subbands
 
         # Inverse wavelet transform the model output
-        B, _, H, W, D = model_output.size()
-        model_output_idwt = idwt(model_output[:, 0, :, :, :].view(B, 1, H, W, D) * 3.,
-                                 model_output[:, 1, :, :, :].view(B, 1, H, W, D),
-                                 model_output[:, 2, :, :, :].view(B, 1, H, W, D),
-                                 model_output[:, 3, :, :, :].view(B, 1, H, W, D),
-                                 model_output[:, 4, :, :, :].view(B, 1, H, W, D),
-                                 model_output[:, 5, :, :, :].view(B, 1, H, W, D),
-                                 model_output[:, 6, :, :, :].view(B, 1, H, W, D),
-                                 model_output[:, 7, :, :, :].view(B, 1, H, W, D))
+        B, _, D, H, W = model_output.size()
+        model_output_idwt = idwt(model_output[:, 0, :, :, :].unsqueeze(1) * 3.,
+                                 model_output[:, 1, :, :, :].unsqueeze(1),
+                                 model_output[:, 2, :, :, :].unsqueeze(1),
+                                 model_output[:, 3, :, :, :].unsqueeze(1),
+                                 model_output[:, 4, :, :, :].unsqueeze(1),
+                                 model_output[:, 5, :, :, :].unsqueeze(1),
+                                 model_output[:, 6, :, :, :].unsqueeze(1),
+                                 model_output[:, 7, :, :, :].unsqueeze(1))
 
 
         # Base loss: per-channel wavelet MSE
