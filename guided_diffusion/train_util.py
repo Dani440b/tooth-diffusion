@@ -208,13 +208,13 @@ class TrainLoop:
 
                 if self.step % 200 == 0:
                     image_size = sample_idwt.size()[2]
-                    midplane = sample_idwt[0, 0, :, :, image_size // 2]
+                    midplane = sample_idwt[0, 0, image_size // 2, :, :]
                     self.summary_writer.add_image('sample/x_0', midplane.unsqueeze(0),
                                                 global_step=self.step + self.resume_step)
 
                     image_size = sample.size()[2]
                     for ch in range(8):
-                        midplane = sample[0, ch, :, :, image_size // 2]
+                        midplane = sample[0, ch, image_size // 2, :, :]
                         self.summary_writer.add_image('sample/{}'.format(names[ch]), midplane.unsqueeze(0),
                                                     global_step=self.step + self.resume_step)
                     # Also log images to wandb if enabled
@@ -224,7 +224,7 @@ class TrainLoop:
                             imgs = []
                             # x_0 image (spatial reconstruction)
                             image_size = sample_idwt.size()[2]
-                            midplane_x0 = sample_idwt[0, 0, :, :, image_size // 2]
+                            midplane_x0 = sample_idwt[0, 0, image_size // 2, :, :]
                             arr = midplane_x0.detach().cpu().numpy()
                             arr = (arr - arr.min()) / (arr.max() - arr.min() + 1e-8)
                             arr = (arr * 255).astype('uint8')
@@ -232,7 +232,7 @@ class TrainLoop:
                             # wavelet channels
                             image_size = sample.size()[2]
                             for ch in range(8):
-                                mid = sample[0, ch, :, :, image_size // 2]
+                                mid = sample[0, ch, image_size // 2, :, :]
                                 mid_arr = mid.detach().cpu().numpy()
                                 mid_arr = (mid_arr - mid_arr.min()) / (mid_arr.max() - mid_arr.min() + 1e-8)
                                 mid_arr = (mid_arr * 255).astype('uint8')
