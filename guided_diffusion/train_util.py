@@ -217,6 +217,7 @@ class TrainLoop:
                         midplane = sample[0, ch, :, :, image_size // 2]
                         self.summary_writer.add_image('sample/{}'.format(names[ch]), midplane.unsqueeze(0),
                                                     global_step=self.step + self.resume_step)
+                    logger.log(f"Logged images at step {self.step + self.resume_step}")
                     # Also log images to wandb if enabled
                     if self.wandb_run is not None:
                         try:
@@ -238,8 +239,8 @@ class TrainLoop:
                                 mid_arr = (mid_arr * 255).astype('uint8')
                                 imgs.append(wandb.Image(mid_arr, caption=f'sample/{names[ch]}'))
                             self.wandb_run.log({"samples": imgs}, step=self.step + self.resume_step)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.log(f"Failed to log images to wandb: {e}")
             # Log scalars to wandb if enabled (even if no tensorboard)
             if self.wandb_run is not None:
                 try:
