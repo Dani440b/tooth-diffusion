@@ -70,11 +70,13 @@ class ToothVolumes(torch.utils.data.Dataset):
             image_np = image_np[first_slice:last_slice, :, :]
             label_np = label_np[first_slice:last_slice, :, :]
         
-        # Ensure all dimensions are even (required for DWT)
+        # Ensure all dimensions are divisible by 16 (required for multi-level DWT)
+        # DWT downsamples by 2 multiple times, so we need dimensions divisible by 2^n
+        divisor = 16
         d, h, w = image_np.shape
-        new_d = d if d % 2 == 0 else d - 1
-        new_h = h if h % 2 == 0 else h - 1
-        new_w = w if w % 2 == 0 else w - 1
+        new_d = (d // divisor) * divisor
+        new_h = (h // divisor) * divisor
+        new_w = (w // divisor) * divisor
         
         if new_d != d or new_h != h or new_w != w:
             image_np = image_np[:new_d, :new_h, :new_w]
