@@ -65,9 +65,20 @@ class ToothVolumes(torch.utils.data.Dataset):
         if len(non_empty_slices) > 0:
             first_slice = non_empty_slices[0]
             last_slice = non_empty_slices[-1] + 1  # +1 for exclusive end in slicing
+            
             # Crop volume to remove empty slices at beginning and end
             image_np = image_np[first_slice:last_slice, :, :]
             label_np = label_np[first_slice:last_slice, :, :]
+        
+        # Ensure all dimensions are even (required for DWT)
+        d, h, w = image_np.shape
+        new_d = d if d % 2 == 0 else d - 1
+        new_h = h if h % 2 == 0 else h - 1
+        new_w = w if w % 2 == 0 else w - 1
+        
+        if new_d != d or new_h != h or new_w != w:
+            image_np = image_np[:new_d, :new_h, :new_w]
+            label_np = label_np[:new_d, :new_h, :new_w]
 
         image_np = self.normalize_image(image_np)
         label_np = label_np.astype(np.uint8)
