@@ -57,14 +57,26 @@ class ToothVolumes(torch.utils.data.Dataset):
         image_np = (nibabel.as_closest_canonical(nibabel.load(filedict["image"]))).get_fdata(dtype=np.float32)
         label_np = (nibabel.as_closest_canonical(nibabel.load(filedict["label"]))).get_fdata(dtype=np.float32)
 
+        # Find first and last slices with brain mask (along depth/z-axis, assumed to be axis 0)
+        # Sum over spatial dimensions to get mask presence per slice
+        slice_sums = label_np.sum(axis=(1, 2))
+        non_empty_slices = np.where(slice_sums > 0)[0]
+        
+        if len(non_empty_slices) > 0:
+            first_slice = non_empty_slices[0]
+            last_slice = non_empty_slices[-1] + 1  # +1 for exclusive end in slicing
+            # Crop volume to remove empty slices at beginning and end
+            image_np = image_np[first_slice:last_slice, :, :]
+            label_np = label_np[first_slice:last_slice, :, :]
+
         image_np = self.normalize_image(image_np)
         label_np = label_np.astype(np.uint8)
         
         # Create brain mask: anything with label > 0 is brain
         brain_mask = (label_np > 0).astype(np.float32)
         
-        # Apply brain mask to image: zero out non-brain regions
-        image_np_masked = image_np * brain_mask
+        # Keep full image (don't mask it)
+        # We filter out empty masks at load time, but use full images for training
 
         # Name and conditions
         filename = os.path.basename(filedict['name'])
@@ -103,10 +115,10 @@ class ToothVolumes(torch.utils.data.Dataset):
 
         
         # Make copy to ensure that it doesn't modify each other
-        # Use masked image (with brain mask applied) for training
-        target_image_np = np.ascontiguousarray(image_np_masked)
+        # Use full unmasked image for training
+        target_image_np = np.ascontiguousarray(image_np)
         target_label_np = np.ascontiguousarray(brain_mask)
-        cond_image_np = np.ascontiguousarray(image_np_masked)
+        cond_image_np = np.ascontiguousarray(image_np)
         cond_label_np = np.ascontiguousarray(brain_mask)
 
         # For MRI, skip tooth-specific augmentation (no teeth in MRI)
@@ -165,5 +177,6 @@ class ToothVolumes(torch.utils.data.Dataset):
             "sex": vectors["sex"],
             "brain_mask": vectors.get("brain_mask", torch.ones_like(label)),
         }
+    
     def __len__(self):
         return len(self.database)

@@ -1163,32 +1163,11 @@ class GaussianDiffusion:
             "mse_wav": th.mean(mean_flat((x_start_dwt - model_output) ** 2), dim=0)
         }
         # NOTE:
-        # The current implementation of the masked loss applies the LLL mask uniformly across all 8 wavelet subbands,
-        # then computes the mean squared error over all subbands, resulting in a single scalar value.
-        # In train_util.py, the regular loss is computed as the mean per subband (8 values), which are then weighted
-        # (currently with equal weights of 1.0) and averaged into a single scalar.
-        #
-        # For future work: if different weights are to be applied to different subbands, consider extending the masked loss
-        # to compute per-subband masked losses (similar to the regular loss) so that each subband can be weighted individually.
+        # We filter samples by mask presence but don't use the mask in the loss computation.
+        # All pixels in the volume contribute equally to the loss.
+        # The mask is used only for filtering out volumes/slices without any segmentation.
         
-        if labels is not None:
-            # Downsample mask to LLL to match resolution
-            LLL_label, *_ = dwt(labels.float())
-            mask_lll = (LLL_label > 0).float()
-
-            #Convert to numpy so that we can use ndimage
-            mask_np = mask_lll.squeeze().cpu().numpy()
-
-            #Compute the Gaussian blur sigma = 2 extra blurry
-            mask_blurred = ndimage.gaussian_filter(mask_np, sigma=2.0)
-
-            # Compute masked MSE
-            mask_blurred_tensor = torch.tensor(mask_blurred, dtype=torch.float32).unsqueeze(0).to(x_start.device)
-
-            masked_diff = ((x_start_dwt - model_output) * mask_blurred_tensor)
-            masked_mse = th.mean(mean_flat(masked_diff ** 2))
-
-            terms["masked_mse"] = masked_mse
+        # Masked loss computation removed - we train on full images without masking the loss
         
         return terms, model_output, model_output_idwt
 

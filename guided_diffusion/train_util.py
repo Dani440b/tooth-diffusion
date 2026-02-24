@@ -406,12 +406,8 @@ class TrainLoop:
             mse_wav = losses["mse_wav"].clone().detach()
             dist.all_reduce(mse_wav)
             mse_wav.div_(dist.get_world_size())
-            if "masked_mse" in losses:
-                masked_mse = losses["masked_mse"].clone().detach()
-                dist.all_reduce(masked_mse)
-                masked_mse.div_(dist.get_world_size())     
-            else:
-                masked_mse = None       
+            # Masked loss removed - no longer computed
+            masked_mse = None       
 
 
             weights = th.ones(len(losses["mse_wav"]), device=self.device)# Equally weight all wavelet channel losses
@@ -435,9 +431,7 @@ class TrainLoop:
                                                 global_step=self.step + self.resume_step)
                     self.summary_writer.add_scalar('loss/mse_wav_hhh', mse_wav[7].item(),
                                                 global_step=self.step + self.resume_step)
-                if masked_mse is not None:
-                    self.summary_writer.add_scalar('loss/masked_mse', masked_mse.item(), global_step=self.step + self.resume_step)
-                    logger.logkv_mean("masked_mse", masked_mse.item())
+                # Masked MSE logging removed
                 log_loss_dict(self.diffusion, t, {"mse_wav": mse_wav * weights.to(self.device)})
                 
                 # Log all wavelet losses and quartile losses to wandb
