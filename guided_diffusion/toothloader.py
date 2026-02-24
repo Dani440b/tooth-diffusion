@@ -70,15 +70,15 @@ class ToothVolumes(torch.utils.data.Dataset):
             image_np = image_np[first_slice:last_slice, :, :]
             label_np = label_np[first_slice:last_slice, :, :]
         
-        # Ensure all dimensions are divisible by 16 (required for multi-level DWT)
-        # DWT downsamples by 2 multiple times, so we need dimensions divisible by 2^n
-        divisor = 16
+        # Ensure dimensions are divisible by 8 (for 3 levels of DWT downsampling in the model)
+        # We prioritize keeping height/width at 256 (model expects this), so mainly crop depth
+        divisor = 8
         d, h, w = image_np.shape
-        new_d = (d // divisor) * divisor
-        new_h = (h // divisor) * divisor
-        new_w = (w // divisor) * divisor
+        new_d = (d // divisor) * divisor if d >= divisor else d
+        new_h = h  # Don't crop height/width - model expects 256
+        new_w = w  # Don't crop width - model expects 256
         
-        if new_d != d or new_h != h or new_w != w:
+        if new_d != d:
             image_np = image_np[:new_d, :new_h, :new_w]
             label_np = label_np[:new_d, :new_h, :new_w]
 
