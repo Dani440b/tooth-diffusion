@@ -1162,12 +1162,18 @@ class GaussianDiffusion:
         terms = {
             "mse_wav": th.mean(mean_flat((x_start_dwt - model_output) ** 2), dim=0)
         }
-        # NOTE:
-        # We filter samples by mask presence but don't use the mask in the loss computation.
-        # All pixels in the volume contribute equally to the loss.
-        # The mask is used only for filtering out volumes/slices without any segmentation.
         
-        # Masked loss computation removed - we train on full images without masking the loss
+        # Use mask to filter voxels for training (only train on voxels that have a label)
+        if labels is not None:
+            # Downsample mask to LLL to match wavelet resolution
+            LLL_label, *_ = dwt(labels.float())
+            mask_lll = (LLL_label > 0).float()
+
+            # Compute masked MSE: only compute loss on voxels with a mask
+            masked_diff = (x_start_dwt - model_output) * mask_lll
+            masked_mse = th.mean(mean_flat(masked_diff ** 2))
+
+            terms["masked_mse"] = masked_mse
         
         return terms, model_output, model_output_idwt
 

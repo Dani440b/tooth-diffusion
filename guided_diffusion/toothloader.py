@@ -57,39 +57,14 @@ class ToothVolumes(torch.utils.data.Dataset):
         image_np = (nibabel.as_closest_canonical(nibabel.load(filedict["image"]))).get_fdata(dtype=np.float32)
         label_np = (nibabel.as_closest_canonical(nibabel.load(filedict["label"]))).get_fdata(dtype=np.float32)
 
-        # Find first and last slices with brain mask (along depth/z-axis, assumed to be axis 0)
-        # Sum over spatial dimensions to get mask presence per slice
-        slice_sums = label_np.sum(axis=(1, 2))
-        non_empty_slices = np.where(slice_sums > 0)[0]
-        
-        if len(non_empty_slices) > 0:
-            first_slice = non_empty_slices[0]
-            last_slice = non_empty_slices[-1] + 1  # +1 for exclusive end in slicing
-            
-            # Crop volume to remove empty slices at beginning and end
-            image_np = image_np[first_slice:last_slice, :, :]
-            label_np = label_np[first_slice:last_slice, :, :]
-        
-        # Ensure dimensions are divisible by 8 (for 3 levels of DWT downsampling in the model)
-        # We prioritize keeping height/width at 256 (model expects this), so mainly crop depth
-        divisor = 8
-        d, h, w = image_np.shape
-        new_d = (d // divisor) * divisor if d >= divisor else d
-        new_h = h  # Don't crop height/width - model expects 256
-        new_w = w  # Don't crop width - model expects 256
-        
-        if new_d != d:
-            image_np = image_np[:new_d, :new_h, :new_w]
-            label_np = label_np[:new_d, :new_h, :new_w]
-
         image_np = self.normalize_image(image_np)
         label_np = label_np.astype(np.uint8)
         
         # Create brain mask: anything with label > 0 is brain
         brain_mask = (label_np > 0).astype(np.float32)
         
-        # Keep full image (don't mask it)
-        # We filter out empty masks at load time, but use full images for training
+        # Keep full image with all slices (no cropping)
+        # We filter out volumes with empty masks at load time, but use full unmasked images for training
 
         # Name and conditions
         filename = os.path.basename(filedict['name'])
