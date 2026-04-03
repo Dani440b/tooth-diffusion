@@ -615,6 +615,7 @@ class WavUNetModel(nn.Module):
             ),
         )
         self._feature_size += ch
+        bottleneck_ch = ch
 
         #################################
         # UPWARD path - feature mapping #
@@ -713,11 +714,11 @@ class WavUNetModel(nn.Module):
 
         # Auxiliary quality head from bottleneck feature map.
         self.quality_head = nn.Sequential(
-            normalization(ch, self.num_groups),
+            normalization(bottleneck_ch, self.num_groups),
             nn.SiLU(),
             nn.AdaptiveAvgPool3d(1),
             nn.Flatten(),
-            nn.Linear(ch, 64),
+            nn.Linear(bottleneck_ch, 64),
             nn.SiLU(),
             nn.Linear(64, 8),
             nn.Sigmoid(),
