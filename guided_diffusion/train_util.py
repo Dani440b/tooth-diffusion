@@ -54,11 +54,15 @@ class TrainLoop:
         training_mode=None,
         conditioning_image=None,
         lambda_mask,
+        lambda_quality,
+        lambda_quality_overall,
     ):
         self.training_mode=training_mode
         self.target = target
         self.conditioning_image = conditioning_image
         self.lambda_mask = lambda_mask
+        self.lambda_quality = lambda_quality
+        self.lambda_quality_overall = lambda_quality_overall
         self.summary_writer = summary_writer
         self.wandb_run = wandb_run
         self.mode = mode
@@ -72,7 +76,12 @@ class TrainLoop:
         self.image_size = image_size
         self.microbatch = microbatch if microbatch > 0 else batch_size
         self.lr = lr
-        print(f"Using learning rate: {self.lr} | Using lambda mask: {self.lambda_mask}")
+        print(
+            f"Using learning rate: {self.lr} | "
+            f"Using lambda mask: {self.lambda_mask} | "
+            f"Using lambda quality metrics: {self.lambda_quality} | "
+            f"Using lambda quality overall: {self.lambda_quality_overall}"
+        )
         self.ema_rate = (
             [ema_rate]
             if isinstance(ema_rate, float)
@@ -365,6 +374,16 @@ class TrainLoop:
                 micro_sex = batch['sex'][i: i + self.microbatch].to(self.device)
             else:
                 micro_sex = None
+
+            if 'quality' in batch:
+                micro_quality = batch['quality'][i: i + self.microbatch].to(self.device)
+            else:
+                micro_quality = None
+
+            if 'metadata_cond' in batch:
+                micro_metadata_cond = batch['metadata_cond'][i: i + self.microbatch].to(self.device)
+            else:
+                micro_metadata_cond = None
             
             if cond is not None:
                 micro_cond = {k: v[i: i + self.microbatch].to(self.device) for k, v in cond.items()}
@@ -378,6 +397,10 @@ class TrainLoop:
                 micro_cond['age'] = micro_age
             if micro_sex is not None:
                 micro_cond['sex'] = micro_sex
+            if micro_quality is not None:
+                micro_cond['quality'] = micro_quality
+            if micro_metadata_cond is not None:
+                micro_cond['metadata_cond'] = micro_metadata_cond
 
             last_batch = (i + self.microbatch) >= batch[target_img].shape[0]
             t, weights = self.schedule_sampler.sample(micro_target.shape[0], self.device)
@@ -413,6 +436,27 @@ class TrainLoop:
             else:
                 masked_mse = None       
 
+            if "quality_mse" in losses:
+                quality_mse = losses["quality_mse"].clone().detach()
+                dist.all_reduce(quality_mse)
+                quality_mse.div_(dist.get_world_size())
+            else:
+                quality_mse = None
+
+            if "quality_metrics_mse" in losses:
+                quality_metrics_mse = losses["quality_metrics_mse"].clone().detach()
+                dist.all_reduce(quality_metrics_mse)
+                quality_metrics_mse.div_(dist.get_world_size())
+            else:
+                quality_metrics_mse = None
+
+            if "quality_overall_mse" in losses:
+                quality_overall_mse = losses["quality_overall_mse"].clone().detach()
+                dist.all_reduce(quality_overall_mse)
+                quality_overall_mse.div_(dist.get_world_size())
+            else:
+                quality_overall_mse = None
+
 
             weights = th.ones(len(losses["mse_wav"]), device=self.device)# Equally weight all wavelet channel losses
             
@@ -438,6 +482,15 @@ class TrainLoop:
                 if masked_mse is not None:
                     self.summary_writer.add_scalar('loss/masked_mse', masked_mse.item(), global_step=self.step + self.resume_step)
                     logger.logkv_mean("masked_mse", masked_mse.item())
+                if quality_mse is not None:
+                    self.summary_writer.add_scalar('loss/quality_mse', quality_mse.item(), global_step=self.step + self.resume_step)
+                    logger.logkv_mean("quality_mse", quality_mse.item())
+                if quality_metrics_mse is not None:
+                    self.summary_writer.add_scalar('loss/quality_metrics_mse', quality_metrics_mse.item(), global_step=self.step + self.resume_step)
+                    logger.logkv_mean("quality_metrics_mse", quality_metrics_mse.item())
+                if quality_overall_mse is not None:
+                    self.summary_writer.add_scalar('loss/quality_overall_mse', quality_overall_mse.item(), global_step=self.step + self.resume_step)
+                    logger.logkv_mean("quality_overall_mse", quality_overall_mse.item())
                 log_loss_dict(self.diffusion, t, {"mse_wav": mse_wav * weights.to(self.device)})
                 
                 # Log all wavelet losses and quartile losses to wandb
@@ -452,6 +505,12 @@ class TrainLoop:
                         # Log masked loss if present
                         if masked_mse is not None:
                             wandb_log_dict['loss/masked_mse'] = masked_mse.item()
+                        if quality_mse is not None:
+                            wandb_log_dict['loss/quality_mse'] = quality_mse.item()
+                        if quality_metrics_mse is not None:
+                            wandb_log_dict['loss/quality_metrics_mse'] = quality_metrics_mse.item()
+                        if quality_overall_mse is not None:
+                            wandb_log_dict['loss/quality_overall_mse'] = quality_overall_mse.item()
                         # Log quartile losses
                         for sub_t, sub_loss in zip(t.cpu().numpy(), (mse_wav * weights.to(self.device)).detach().cpu().numpy()):
                             quartile = int(4 * sub_t / self.diffusion.num_timesteps)
@@ -472,6 +531,10 @@ class TrainLoop:
             # If we have a mask loss, add it to the total loss and lambda_mask specified in run.sh file or default 10.0
             if "masked_mse" in losses:
                 loss = loss + self.lambda_mask * losses["masked_mse"]
+            if "quality_metrics_mse" in losses:
+                loss = loss + self.lambda_quality * losses["quality_metrics_mse"]
+            if "quality_overall_mse" in losses:
+                loss = loss + self.lambda_quality_overall * losses["quality_overall_mse"]
             
             lossmse = loss.detach()
             

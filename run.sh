@@ -11,7 +11,7 @@ MODEL='ours_wnet_256';    # 'ours_wnet_256' currently only supported for wnet_25
 MODE=${1:-train}          # train vs sample
 TARGET=${2:-mri}        
 RESUME_CHECKPOINT=${3:-}  
-CONDITIONING_IMAGE='none'
+CONDITIONING_IMAGE='cond'
 
 # settings for sampling/inference
 ITERATIONS=1200;        # training iteration (as a multiple of 1k) checkpoint to use for sampling
@@ -50,6 +50,8 @@ elif [[ $MODE == 'train' ]]; then
     echo "DATASET: MRI"
     DATA_DIR=prep_data/train;
     META_DATA=prep_data/metadata.csv
+    # DCP-Diff style conditioning: noisy MRI as conditioning guide, clean MRI as diffusion target.
+    NOISY_DIR=${NOISY_DIR:-prep_data/train_augmented}
   else
     echo "DATASET NOT FOUND -> Check the supported datasets again";
   fi
@@ -87,6 +89,7 @@ COMMON="
 TRAIN="
 --data_dir=${DATA_DIR}
 --meta_data=${META_DATA}
+--noisy_dir=${NOISY_DIR}
 --target=${TARGET}
 --training_mode=${MODE}
 --conditioning_image=${CONDITIONING_IMAGE}
@@ -99,6 +102,8 @@ TRAIN="
 --auto_vram=True
 --lr=1e-5
 --lambda_mask=10.0
+--lambda_quality=1.0
+--lambda_quality_overall=1.0
 --save_interval=5000
 --num_workers=4
 --devices=${GPU}

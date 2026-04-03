@@ -299,17 +299,42 @@ class GaussianDiffusion:
         diagnosis = model_kwargs.get('diagnosis', None)
         age = model_kwargs.get('age', None)
         sex = model_kwargs.get('sex', None)
+        quality = model_kwargs.get('quality', None)
+        metadata_cond = model_kwargs.get('metadata_cond', None)
 
         #Cond for generation (medical image conditioning, etc.) is passed through. 
         if cond is not None:
             x_cond = th.cat([x, cond], dim=1) # concat the conditioning to the noise
         else:
             x_cond = x
+
+        if metadata_cond is not None:
+            md = metadata_cond
+            while len(md.shape) < len(x.shape):
+                md = md.unsqueeze(-1)
+            md = md.expand(-1, -1, x.shape[2], x.shape[3], x.shape[4])
+            x_cond = th.cat([x_cond, md], dim=1)
         
-        model_output = model(x_cond, self._scale_timesteps(t), 
-                            diagnosis=diagnosis, 
-                            age=age, 
-                            sex=sex)
+        try:
+            model_output = model(
+                x_cond,
+                self._scale_timesteps(t),
+                diagnosis=diagnosis,
+                age=age,
+                sex=sex,
+                quality=quality,
+            )
+        except TypeError:
+            model_output = model(
+                x_cond,
+                self._scale_timesteps(t),
+                diagnosis=diagnosis,
+                age=age,
+                sex=sex,
+            )
+
+        if isinstance(model_output, tuple):
+            model_output = model_output[0]
         
         if self.model_var_type in [ModelVarType.LEARNED, ModelVarType.LEARNED_RANGE]:
             assert model_output.shape == (B, C * 2, *x.shape[2:])
@@ -1116,6 +1141,8 @@ class GaussianDiffusion:
         diagnosis = model_kwargs.get('diagnosis', None)
         age = model_kwargs.get('age', None)
         sex = model_kwargs.get('sex', None)
+        quality = model_kwargs.get('quality', None)
+        metadata_cond = model_kwargs.get('metadata_cond', None)
         
         condition_1 = model_kwargs.get('condition', None) #If conditioing iamge which is concatenated to the input
 
@@ -1127,6 +1154,17 @@ class GaussianDiffusion:
         if condition_1 is not None:
             LLL_c, LLH_c, LHL_c, LHH_c, HLL_c, HLH_c, HHL_c, HHH_c = dwt(condition_1)
             cond_dwt = torch.cat([LLL_c / 3., LLH_c, LHL_c, LHH_c, HLL_c, HLH_c, HHL_c, HHH_c], dim=1)
+
+        metadata_cond_dwt = None
+        if metadata_cond is not None:
+            metadata_cond_dwt = metadata_cond.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+            metadata_cond_dwt = metadata_cond_dwt.expand(
+                -1,
+                -1,
+                x_start_dwt.shape[2],
+                x_start_dwt.shape[3],
+                x_start_dwt.shape[4],
+            )
                 
         if mode == 'default':
             noise = torch.randn_like(x_start)
@@ -1136,15 +1174,35 @@ class GaussianDiffusion:
 
             if cond_dwt is not None:
                 x_t = torch.cat([x_t,cond_dwt], dim=1)
+            if metadata_cond_dwt is not None:
+                x_t = torch.cat([x_t, metadata_cond_dwt], dim=1)
 
         else:
             raise ValueError(f'Invalid mode {mode=}, needs to be "default"')
 
         # Pass our conditions to the iput to the model
-        model_output = model(x_t, self._scale_timesteps(t), 
-                            diagnosis=diagnosis, 
-                            age=age, 
-                            sex=sex) # Model outputs denoised wavelet subbands
+        try:
+            model_output = model(
+                x_t,
+                self._scale_timesteps(t),
+                diagnosis=diagnosis,
+                age=age,
+                sex=sex,
+                quality=quality,
+                return_quality=True,
+            )
+        except TypeError:
+            model_output = model(
+                x_t,
+                self._scale_timesteps(t),
+                diagnosis=diagnosis,
+                age=age,
+                sex=sex,
+            )
+
+        quality_pred = None
+        if isinstance(model_output, tuple):
+            model_output, quality_pred = model_output
 
         # Inverse wavelet transform the model output
         B, _, H, W, D = model_output.size()
@@ -1174,6 +1232,16 @@ class GaussianDiffusion:
             masked_mse = th.mean(mean_flat(masked_diff ** 2))
 
             terms["masked_mse"] = masked_mse
+
+        if quality is not None and quality_pred is not None:
+            # First 7 channels are artifact metrics, last channel is overall quality.
+            metrics_pred = quality_pred[:, :7]
+            metrics_target = quality[:, :7]
+            overall_pred = quality_pred[:, 7:8]
+            overall_target = quality[:, 7:8]
+            terms["quality_metrics_mse"] = th.mean((metrics_pred - metrics_target) ** 2)
+            terms["quality_overall_mse"] = th.mean((overall_pred - overall_target) ** 2)
+            terms["quality_mse"] = terms["quality_metrics_mse"] + terms["quality_overall_mse"]
         
         return terms, model_output, model_output_idwt
 

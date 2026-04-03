@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="980" viewBox="0 0 1700 980">
+  <defs>
+    <style>
+      .title { font: 700 28px Arial, sans-serif; fill: #1d2a44; }
+      .label { font: 600 14px Arial, sans-serif; fill: #0f2b4c; }
+      .small { font: 500 12px Arial, sans-serif; fill: #163055; }
+      .loss { font: 600 13px Arial, sans-serif; fill: #5a3300; }
+      .box-core { fill: #e8f3ff; stroke: #2f5fa0; stroke-width: 2; rx: 10; }
+      .box-qa { fill: #e9fbe9; stroke: #2f8f46; stroke-width: 2; rx: 10; }
+      .box-loss { fill: #fff4e5; stroke: #b36b00; stroke-width: 2; rx: 10; }
+      .arrow { stroke: #4d4d4d; stroke-width: 2.2; fill: none; marker-end: url(#arrowhead); }
+      .legend { font: 500 12px Arial, sans-serif; fill: #334; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#4d4d4d" />
+    </marker>
+  </defs>
+
+  <text x="36" y="44" class="title">WDM With DCP Conditioning And Integrated Quality Assessment</text>
+
+  <!-- Main denoising path -->
+  <rect x="40" y="130" width="180" height="74" class="box-core" />
+  <text x="130" y="158" text-anchor="middle" class="label">Input MRI</text>
+  <text x="130" y="178" text-anchor="middle" class="small">3D volume, normalized</text>
+
+  <rect x="270" y="130" width="160" height="74" class="box-core" />
+  <text x="350" y="158" text-anchor="middle" class="label">DWT 3D</text>
+  <text x="350" y="178" text-anchor="middle" class="small">8 wavelet subbands</text>
+
+  <rect x="480" y="130" width="220" height="74" class="box-core" />
+  <text x="590" y="158" text-anchor="middle" class="label">Forward diffusion</text>
+  <text x="590" y="178" text-anchor="middle" class="small">q(x_t | x_0), sampled t</text>
+
+  <rect x="750" y="130" width="260" height="90" class="box-core" />
+  <text x="880" y="162" text-anchor="middle" class="label">WavUNet backbone</text>
+  <text x="880" y="184" text-anchor="middle" class="small">input: [x_t || r_dwt || metadata || q_in]</text>
+  <text x="880" y="204" text-anchor="middle" class="small">shared encoder-decoder for denoise + QA</text>
+
+  <rect x="1060" y="130" width="210" height="74" class="box-core" />
+  <text x="1165" y="158" text-anchor="middle" class="label">Denoised subbands</text>
+  <text x="1165" y="178" text-anchor="middle" class="small">x0_hat (8 channels)</text>
+
+  <rect x="1320" y="130" width="130" height="74" class="box-core" />
+  <text x="1385" y="158" text-anchor="middle" class="label">IDWT 3D</text>
+  <text x="1385" y="178" text-anchor="middle" class="small">inverse wavelet</text>
+
+  <rect x="1490" y="130" width="170" height="74" class="box-core" />
+  <text x="1575" y="158" text-anchor="middle" class="label">Clean output</text>
+  <text x="1575" y="178" text-anchor="middle" class="small">reconstructed MRI</text>
+
+  <rect x="460" y="30" width="240" height="70" class="box-core" />
+  <text x="580" y="58" text-anchor="middle" class="label">DCP image conditioning</text>
+  <text x="580" y="78" text-anchor="middle" class="small">noisy MRI guide r -&gt; DWT(r)</text>
+
+  <!-- Conditioning -->
+  <rect x="730" y="30" width="200" height="70" class="box-core" />
+  <text x="830" y="58" text-anchor="middle" class="label">Metadata conditioning</text>
+  <text x="830" y="78" text-anchor="middle" class="small">diagnosis, age, sex</text>
+
+  <rect x="950" y="30" width="150" height="70" class="box-core" />
+  <text x="1025" y="58" text-anchor="middle" class="label">Timestep</text>
+  <text x="1025" y="78" text-anchor="middle" class="small">embedding t</text>
+
+  <rect x="1120" y="30" width="220" height="70" class="box-core" />
+  <text x="1230" y="58" text-anchor="middle" class="label">Quality input conditioning</text>
+  <text x="1230" y="78" text-anchor="middle" class="small">q_in = [q1..q7, q_overall]</text>
+
+  <!-- Quality branch -->
+  <rect x="760" y="310" width="220" height="74" class="box-qa" />
+  <text x="870" y="338" text-anchor="middle" class="label">Global feature pooling</text>
+  <text x="870" y="358" text-anchor="middle" class="small">from shared backbone</text>
+
+  <rect x="1030" y="310" width="210" height="74" class="box-qa" />
+  <text x="1135" y="338" text-anchor="middle" class="label">Quality regressor</text>
+  <text x="1135" y="358" text-anchor="middle" class="small">8 sigmoid outputs (7+overall)</text>
+
+  <rect x="1290" y="300" width="190" height="94" class="box-qa" />
+  <text x="1385" y="332" text-anchor="middle" class="label">Artifact scores</text>
+  <text x="1385" y="352" text-anchor="middle" class="small">q1..q7 in [0,1]</text>
+  <text x="1385" y="372" text-anchor="middle" class="small">1 = clean</text>
+
+  <rect x="1510" y="310" width="150" height="74" class="box-qa" />
+  <text x="1585" y="338" text-anchor="middle" class="label">Overall score</text>
+  <text x="1585" y="358" text-anchor="middle" class="small">q_overall</text>
+
+  <!-- Losses -->
+  <rect x="1240" y="510" width="220" height="70" class="box-loss" />
+  <text x="1350" y="538" text-anchor="middle" class="loss">L_denoise</text>
+  <text x="1350" y="558" text-anchor="middle" class="small">reconstruction loss</text>
+
+  <rect x="1490" y="510" width="170" height="70" class="box-loss" />
+  <text x="1575" y="538" text-anchor="middle" class="loss">L_metrics</text>
+  <text x="1575" y="558" text-anchor="middle" class="small">7-metric loss</text>
+
+  <rect x="1490" y="600" width="170" height="70" class="box-loss" />
+  <text x="1575" y="628" text-anchor="middle" class="loss">L_overall</text>
+  <text x="1575" y="648" text-anchor="middle" class="small">global score loss</text>
+
+  <rect x="1180" y="710" width="480" height="92" class="box-loss" />
+  <text x="1420" y="744" text-anchor="middle" class="loss">Total loss</text>
+  <text x="1420" y="766" text-anchor="middle" class="small">L = L_denoise + lambda_q * L_metrics + lambda_o * L_overall</text>
+  <text x="1420" y="786" text-anchor="middle" class="small">Backprop through shared WavUNet backbone</text>
+
+  <!-- Main arrows -->
+  <path d="M220 167 L270 167" class="arrow"/>
+  <path d="M430 167 L480 167" class="arrow"/>
+  <path d="M700 167 L750 167" class="arrow"/>
+  <path d="M1010 167 L1060 167" class="arrow"/>
+  <path d="M1270 167 L1320 167" class="arrow"/>
+  <path d="M1450 167 L1490 167" class="arrow"/>
+
+  <!-- Conditioning arrows -->
+  <path d="M580 100 L760 130" class="arrow"/>
+  <path d="M830 100 L830 130" class="arrow"/>
+  <path d="M1025 100 L930 130" class="arrow"/>
+  <path d="M1230 100 L980 130" class="arrow"/>
+
+  <!-- Quality branch arrows -->
+  <path d="M880 220 L880 310" class="arrow"/>
+  <path d="M980 347 L1030 347" class="arrow"/>
+  <path d="M1240 347 L1290 347" class="arrow"/>
+  <path d="M1480 347 L1510 347" class="arrow"/>
+
+  <!-- Loss arrows -->
+  <path d="M1575 204 L1350 510" class="arrow"/>
+  <path d="M1385 394 L1560 510" class="arrow"/>
+  <path d="M1585 384 L1585 600" class="arrow"/>
+
+  <path d="M1350 580 L1350 710" class="arrow"/>
+  <path d="M1575 580 L1490 710" class="arrow"/>
+  <path d="M1575 670 L1535 710" class="arrow"/>
+
+</svg>

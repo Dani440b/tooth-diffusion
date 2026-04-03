@@ -478,6 +478,7 @@ class WavUNetModel(nn.Module):
         self.diagnosis_embedding = nn.Linear(3, time_embed_dim)  # 3-class diagnosis (CN, MCI, AD)
         self.age_embedding = nn.Linear(1, time_embed_dim)        # Age (normalized)
         self.sex_embedding = nn.Linear(1, time_embed_dim)        # Sex (M/F)
+        self.quality_embedding = nn.Linear(8, time_embed_dim)    # 7 artifact scores + overall
 
             
         ###############
@@ -709,6 +710,18 @@ class WavUNetModel(nn.Module):
             nn.SiLU(),
             conv_nd(dims, model_channels, out_channels, 3, padding=1),
         )
+
+        # Auxiliary quality head from bottleneck feature map.
+        self.quality_head = nn.Sequential(
+            normalization(ch, self.num_groups),
+            nn.SiLU(),
+            nn.AdaptiveAvgPool3d(1),
+            nn.Flatten(),
+            nn.Linear(ch, 64),
+            nn.SiLU(),
+            nn.Linear(64, 8),
+            nn.Sigmoid(),
+        )
     
     ### For now it is outcommented since the usage is not what we want
     """
@@ -744,7 +757,7 @@ class WavUNetModel(nn.Module):
                 print("Error here 3")
     """
     
-    def forward(self, x, timesteps, diagnosis=None, age=None, sex=None):
+    def forward(self, x, timesteps, diagnosis=None, age=None, sex=None, quality=None, return_quality=False):
         """
         Apply the model to an input batch.
 
@@ -753,6 +766,8 @@ class WavUNetModel(nn.Module):
         :param diagnosis: an [N x 3] Tensor one-hot encoded for disease (CN, MCI, AD).
         :param age: an [N x 1] Tensor of age normalized to [0, 1].
         :param sex: an [N x 1] Tensor of sex (0=F, 1=M).
+        :param quality: an [N x 8] Tensor (7 artifact scores + overall).
+        :param return_quality: if True, return tuple (denoised_wavelets, predicted_quality).
         :return: an [N x C x ...] Tensor of outputs.
         """
         
@@ -766,6 +781,8 @@ class WavUNetModel(nn.Module):
             emb += self.age_embedding(age)
         if sex is not None:
             emb += self.sex_embedding(sex)
+        if quality is not None:
+            emb += self.quality_embedding(quality)
         
         h = x
         self.hs_shapes = []
@@ -787,6 +804,8 @@ class WavUNetModel(nn.Module):
             h = module(h, emb)
             if isinstance(h, tuple):
                 h, skip = h
+
+        quality_logits = self.quality_head(h)
 
         for module in self.output_blocks:
             new_hs = hs.pop()
@@ -816,5 +835,7 @@ class WavUNetModel(nn.Module):
             h = module(h, emb)
 
         h, _ = h
-        
-        return self.out(h)
+        denoised = self.out(h)
+        if return_quality:
+            return denoised, quality_logits
+        return denoised

@@ -113,6 +113,16 @@ def main():
             logger.log(f"Failed to initialize wandb: {e}")
 
     logger.log(f"Rank {rank}/{world_size}: Creating model and diffusion...")
+
+    # Compute model input channels from active conditioning configuration.
+    if args.metadata_as_channels:
+        cond_ch = 8 if args.conditioning_image != "none" else 0
+        args.in_channels = 8 + cond_ch + int(args.metadata_channels_dim)
+        logger.log(
+            f"Using metadata channel conditioning: in_channels={args.in_channels} "
+            f"(x_t=8, cond={cond_ch}, metadata={args.metadata_channels_dim})"
+        )
+
     arguments = args_to_dict(args, model_and_diffusion_defaults().keys())
     
     # Model and diffusion creation
@@ -138,6 +148,8 @@ def main():
             normalize=(lambda x: 2 * x - 1) if args.renormalize else None,
             mode='train',
             img_size=args.image_size,
+            noisy_dir=args.noisy_dir or None,
+            noisy_meta_data=args.noisy_meta_data or None,
         )
 
     else:
@@ -188,6 +200,8 @@ def main():
         training_mode=args.training_mode,
         conditioning_image=args.conditioning_image,
         lambda_mask=args.lambda_mask,
+        lambda_quality=args.lambda_quality,
+        lambda_quality_overall=args.lambda_quality_overall,
     ).run_loop()
     
     dist.destroy_process_group()
@@ -197,12 +211,16 @@ def create_argparser():
         seed=0,
         data_dir="",
         meta_data="",
+        noisy_dir="",        # path to torchio_preproc/output/train for DCP-Diff style conditioning
+        noisy_meta_data="",  # path to augmentation_metadata.csv (defaults to noisy_dir/augmentation_metadata.csv)
         target="",
         training_mode="train",
         conditioning_image="none",
         schedule_sampler="uniform",
         lr=1e-4,
         lambda_mask=10.0,
+        lambda_quality=1.0,
+        lambda_quality_overall=1.0,
         weight_decay=0.0,
         lr_anneal_steps=0,
         batch_size=1,
@@ -230,6 +248,8 @@ def create_argparser():
         num_groups=32,
         channel_mult="1,2,2,4,4",
         in_channels=8,
+        metadata_as_channels=True,
+        metadata_channels_dim=13,
         out_channels=8,
         bottleneck_attention=False,
         num_workers=0,
