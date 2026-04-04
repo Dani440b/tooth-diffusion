@@ -11,7 +11,7 @@ MODEL='ours_wnet_256';    # 'ours_wnet_256' currently only supported for wnet_25
 MODE=${1:-train}          # train vs sample
 TARGET=${2:-mri}        
 RESUME_CHECKPOINT=${3:-}  
-CONDITIONING_IMAGE='cond'
+CONDITIONING_IMAGE='dcp'
 
 # settings for sampling/inference
 ITERATIONS=1200;        # training iteration (as a multiple of 1k) checkpoint to use for sampling
