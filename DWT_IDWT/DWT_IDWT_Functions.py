@@ -103,6 +103,11 @@ class IDWTFunction_2D(Function):
     @staticmethod
     def backward(ctx, grad_output):
         matrix_Low_0, matrix_Low_1, matrix_High_0, matrix_High_1 = ctx.saved_variables
+        # Cast matrices to match grad_output dtype for mixed precision
+        matrix_Low_0 = matrix_Low_0.to(grad_output.dtype)
+        matrix_Low_1 = matrix_Low_1.to(grad_output.dtype)
+        matrix_High_0 = matrix_High_0.to(grad_output.dtype)
+        matrix_High_1 = matrix_High_1.to(grad_output.dtype)
         grad_L = torch.matmul(matrix_Low_0, grad_output)
         grad_H = torch.matmul(matrix_High_0, grad_output)
         grad_LL = torch.matmul(grad_L, matrix_Low_1)
@@ -139,6 +144,14 @@ class DWTFunction_3D(Function):
     def backward(ctx, grad_LLL, grad_LLH, grad_LHL, grad_LHH,
                  grad_HLL, grad_HLH, grad_HHL, grad_HHH):
         matrix_Low_0, matrix_Low_1, matrix_Low_2, matrix_High_0, matrix_High_1, matrix_High_2 = ctx.saved_variables
+        # Cast matrices to match gradient dtype for mixed precision
+        grad_dtype = grad_LLL.dtype
+        matrix_Low_0 = matrix_Low_0.to(grad_dtype)
+        matrix_Low_1 = matrix_Low_1.to(grad_dtype)
+        matrix_Low_2 = matrix_Low_2.to(grad_dtype)
+        matrix_High_0 = matrix_High_0.to(grad_dtype)
+        matrix_High_1 = matrix_High_1.to(grad_dtype)
+        matrix_High_2 = matrix_High_2.to(grad_dtype)
         grad_LL = torch.add(torch.matmul(matrix_Low_2.t(), grad_LLL.transpose(dim0=2, dim1=3)), torch.matmul(
             matrix_High_2.t(), grad_HLL.transpose(dim0=2, dim1=3))).transpose(dim0=2, dim1=3)
         grad_LH = torch.add(torch.matmul(matrix_Low_2.t(), grad_LLH.transpose(dim0=2, dim1=3)), torch.matmul(
@@ -183,6 +196,13 @@ class IDWTFunction_3D(Function):
     @staticmethod
     def backward(ctx, grad_output):
         matrix_Low_0, matrix_Low_1, matrix_Low_2, matrix_High_0, matrix_High_1, matrix_High_2 = ctx.saved_variables
+        # Cast matrices to match grad_output dtype for mixed precision
+        matrix_Low_0 = matrix_Low_0.to(grad_output.dtype)
+        matrix_Low_1 = matrix_Low_1.to(grad_output.dtype)
+        matrix_Low_2 = matrix_Low_2.to(grad_output.dtype)
+        matrix_High_0 = matrix_High_0.to(grad_output.dtype)
+        matrix_High_1 = matrix_High_1.to(grad_output.dtype)
+        matrix_High_2 = matrix_High_2.to(grad_output.dtype)
         grad_L = torch.matmul(matrix_Low_0, grad_output)
         grad_H = torch.matmul(matrix_High_0, grad_output)
         grad_LL = torch.matmul(grad_L, matrix_Low_1).transpose(dim0=2, dim1=3)
