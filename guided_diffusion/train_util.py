@@ -7,7 +7,7 @@ import torch as th
 import torch.distributed as dist
 import torch.utils.tensorboard
 from torch.optim import AdamW
-import torch.cuda.amp as amp
+import torch.amp as amp
 
 import itertools
 
@@ -92,9 +92,9 @@ class TrainLoop:
         self.resume_checkpoint = resume_checkpoint
         self.use_fp16 = use_fp16
         if self.use_fp16:
-            self.grad_scaler = amp.GradScaler()
+            self.grad_scaler = amp.GradScaler('cuda')
         else:
-            self.grad_scaler = amp.GradScaler(enabled=False)
+            self.grad_scaler = amp.GradScaler('cuda', enabled=False)
 
         print("Nummer of timesteps:", self.diffusion.num_timesteps)
         self.schedule_sampler = schedule_sampler or UniformSampler(diffusion)
@@ -414,7 +414,7 @@ class TrainLoop:
                                                mode=self.mode,
                                                )
             autocast_enabled = self.use_fp16 and th.cuda.is_available()
-            with amp.autocast(enabled=autocast_enabled):
+            with amp.autocast('cuda', enabled=autocast_enabled):
                 losses1 = compute_losses()
 
             if isinstance(self.schedule_sampler, LossAwareSampler):

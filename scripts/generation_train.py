@@ -77,7 +77,6 @@ def main():
         else:
             args.num_channels = 64
             args.channel_mult = "1,2,2,4,4,4"
-        args.use_fp16 = True
         args.use_checkpoint = True
         logger.log(
             f"Auto VRAM tuning: {total_gb:.1f} GB -> "
