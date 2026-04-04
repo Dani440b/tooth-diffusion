@@ -1,7 +1,7 @@
 # general settings
-GPU=0;                    # gpu to use
-NUMBERofGPUS=1            # number of gpus to use, should reflect what you specify on GPU variable
-MASTERPORT=12345;          # master port for distributed training
+GPU=0,1;                  # gpu to use
+NUMBERofGPUS=2            # number of gpus to use, should reflect what you specify on GPU variable
+MASTERPORT=12345;         # master port for distributed training
 SEED=42;                  # randomness seed for sampling
 CHANNELS=32;              # number of model base channels (lower to reduce VRAM)
 DATASET='mri';            

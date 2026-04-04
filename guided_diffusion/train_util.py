@@ -413,7 +413,9 @@ class TrainLoop:
                                                labels=micro_label,
                                                mode=self.mode,
                                                )
-            losses1 = compute_losses()
+            autocast_enabled = self.use_fp16 and th.cuda.is_available()
+            with amp.autocast(enabled=autocast_enabled):
+                losses1 = compute_losses()
 
             if isinstance(self.schedule_sampler, LossAwareSampler):
                 self.schedule_sampler.update_with_local_losses(
