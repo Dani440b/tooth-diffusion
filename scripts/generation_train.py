@@ -55,10 +55,14 @@ def main():
     else:
         device = th.device('cpu')
 
-    if args.auto_vram and use_cuda and rank == 0:
-        props = th.cuda.get_device_properties(device)
-        total_gb = props.total_memory / (1024 ** 3)
-        # Simple heuristic by total VRAM
+    if args.auto_vram and use_cuda:
+        local_total_gb = th.cuda.get_device_properties(device).total_memory / (1024 ** 3)
+        total_gb_tensor = th.tensor([local_total_gb], device=device, dtype=th.float32)
+        if dist.is_initialized():
+            dist.all_reduce(total_gb_tensor, op=dist.ReduceOp.MIN)
+        total_gb = float(total_gb_tensor.item())
+
+        # Tune once from the smallest visible GPU across ranks so every process builds the same model.
         if total_gb <= 16:
             args.num_channels = 16
             args.channel_mult = "1,1,2,2,4,4"
@@ -78,12 +82,13 @@ def main():
             args.num_channels = 64
             args.channel_mult = "1,2,2,4,4,4"
         args.use_checkpoint = True
-        logger.log(
-            f"Auto VRAM tuning: {total_gb:.1f} GB -> "
-            f"channels={args.num_channels}, channel_mult={args.channel_mult}, "
-            f"batch_size={args.batch_size}, microbatch={args.microbatch}, "
-            f"fp16={args.use_fp16}, checkpoint={args.use_checkpoint}"
-        )
+        if rank == 0:
+            logger.log(
+                f"Auto VRAM tuning: {total_gb:.1f} GB -> "
+                f"channels={args.num_channels}, channel_mult={args.channel_mult}, "
+                f"batch_size={args.batch_size}, microbatch={args.microbatch}, "
+                f"fp16={args.use_fp16}, checkpoint={args.use_checkpoint}"
+            )
     
     summary_writer = None
     if args.use_tensorboard and rank == 0:
