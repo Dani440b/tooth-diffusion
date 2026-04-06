@@ -21,7 +21,7 @@ from guided_diffusion.script_util import (model_and_diffusion_defaults,
 from guided_diffusion.train_util import TrainLoop
 from torch.utils.tensorboard import SummaryWriter
 
-from torch.utils.data import DataLoader, DistributedSampler
+from torch.utils.data import DataLoader, DistributedSampler, Subset
 import torch.distributed as dist
 import os
 
@@ -143,9 +143,11 @@ def main():
     schedule_sampler = create_named_schedule_sampler(
         args.schedule_sampler, diffusion, maxt=args.diffusion_steps)
 
+    train_ds = None
+    val_ds = None
     if args.dataset == 'mri':
         assert args.image_size in [256], "We currently just support image sizes 256"
-        ds = ToothVolumes(
+        full_ds = ToothVolumes(
             directory=args.data_dir,
             metadata_path=args.meta_data,
             test_flag=False,
@@ -156,11 +158,46 @@ def main():
             noisy_meta_data=args.noisy_meta_data or None,
         )
 
+        train_ds = full_ds
+        if args.val_data_dir:
+            val_ds = ToothVolumes(
+                directory=args.val_data_dir,
+                metadata_path=args.meta_data,
+                test_flag=False,
+                normalize=(lambda x: 2 * x - 1) if args.renormalize else None,
+                mode='eval',
+                img_size=args.image_size,
+                noisy_dir=args.val_noisy_dir or None,
+                noisy_meta_data=args.val_noisy_meta_data or None,
+            )
+        elif args.val_split > 0.0:
+            n_total = len(full_ds)
+            n_val = int(round(n_total * args.val_split))
+            if n_val <= 0:
+                n_val = 1
+            if n_val >= n_total:
+                n_val = n_total - 1
+
+            rng = np.random.default_rng(seed)
+            indices = np.arange(n_total)
+            rng.shuffle(indices)
+            val_idx = indices[:n_val].tolist()
+            train_idx = indices[n_val:].tolist()
+
+            train_ds = Subset(full_ds, train_idx)
+            val_ds = Subset(full_ds, val_idx)
+
+            if rank == 0:
+                logger.log(
+                    f"Using train/val split from training data: "
+                    f"train={len(train_ds)}, val={len(val_ds)}, val_split={args.val_split}"
+                )
+
     else:
         print("We currently just support the datasets: mri")
 
     logger.log(f"Rank {rank}: Creating dataset...")
-    sampler = DistributedSampler(ds, num_replicas=world_size, rank=rank, shuffle=True)
+    sampler = DistributedSampler(train_ds, num_replicas=world_size, rank=rank, shuffle=True)
     dataloader_kwargs = dict(
         batch_size=args.batch_size,
         num_workers=args.num_workers,
@@ -174,7 +211,25 @@ def main():
             persistent_workers=True,
             prefetch_factor=2,
         )
-    datal = DataLoader(ds, **dataloader_kwargs)
+    datal = DataLoader(train_ds, **dataloader_kwargs)
+
+    val_datal = None
+    if val_ds is not None:
+        val_sampler = DistributedSampler(val_ds, num_replicas=world_size, rank=rank, shuffle=False)
+        val_kwargs = dict(
+            batch_size=args.val_batch_size if args.val_batch_size > 0 else args.batch_size,
+            num_workers=args.num_workers,
+            shuffle=False,
+            sampler=val_sampler,
+            pin_memory=True,
+            drop_last=False,
+        )
+        if args.num_workers > 0:
+            val_kwargs.update(
+                persistent_workers=True,
+                prefetch_factor=2,
+            )
+        val_datal = DataLoader(val_ds, **val_kwargs)
 
     logger.log(f"Rank {rank}: Start training...")
     TrainLoop(
@@ -206,6 +261,9 @@ def main():
         lambda_mask=args.lambda_mask,
         lambda_quality=args.lambda_quality,
         lambda_quality_overall=args.lambda_quality_overall,
+        val_data=val_datal,
+        validation_interval=args.validation_interval,
+        early_stop_patience=args.early_stop_patience,
     ).run_loop()
     
     dist.destroy_process_group()
@@ -217,6 +275,13 @@ def create_argparser():
         meta_data="",
         noisy_dir="",        # path to torchio_preproc/output/train for DCP-Diff style conditioning
         noisy_meta_data="",  # path to augmentation_metadata.csv (defaults to noisy_dir/augmentation_metadata.csv)
+        val_data_dir="",     # optional validation clean directory (e.g., prep_data/train_aug_test)
+        val_noisy_dir="",    # optional validation noisy directory for DCP conditioning
+        val_noisy_meta_data="",  # optional validation augmentation metadata csv
+        val_batch_size=1,
+        val_split=0.0,
+        validation_interval=5000,
+        early_stop_patience=10,
         target="",
         training_mode="train",
         conditioning_image="none",

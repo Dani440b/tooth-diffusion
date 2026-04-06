@@ -1189,7 +1189,7 @@ class GaussianDiffusion:
                 age=age,
                 sex=sex,
                 quality=quality,
-                return_quality=True,
+                return_quality=False,
             )
         except TypeError:
             model_output = model(
@@ -1200,9 +1200,8 @@ class GaussianDiffusion:
                 sex=sex,
             )
 
-        quality_pred = None
         if isinstance(model_output, tuple):
-            model_output, quality_pred = model_output
+            model_output = model_output[0]
 
         # Inverse wavelet transform the model output
         B, _, H, W, D = model_output.size()
@@ -1233,16 +1232,6 @@ class GaussianDiffusion:
 
             terms["masked_mse"] = masked_mse
 
-        if quality is not None and quality_pred is not None:
-            # First 7 channels are artifact metrics, last channel is overall quality.
-            metrics_pred = quality_pred[:, :7]
-            metrics_target = quality[:, :7]
-            overall_pred = quality_pred[:, 7:8]
-            overall_target = quality[:, 7:8]
-            terms["quality_metrics_mse"] = th.mean((metrics_pred - metrics_target) ** 2)
-            terms["quality_overall_mse"] = th.mean((overall_pred - overall_target) ** 2)
-            terms["quality_mse"] = terms["quality_metrics_mse"] + terms["quality_overall_mse"]
-        
         return terms, model_output, model_output_idwt
 
 

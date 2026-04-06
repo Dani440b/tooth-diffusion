@@ -50,6 +50,10 @@ elif [[ $MODE == 'train' ]]; then
     echo "DATASET: MRI"
     DATA_DIR=prep_data/train;
     META_DATA=prep_data/metadata.csv
+    VAL_DATA_DIR=${VAL_DATA_DIR:-}
+    VAL_NOISY_DIR=${VAL_NOISY_DIR:-}
+    VAL_NOISY_META_DATA=${VAL_NOISY_META_DATA:-}
+    VAL_SPLIT=${VAL_SPLIT:-0.1}
     # DCP-Diff style conditioning: noisy MRI as conditioning guide, clean MRI as diffusion target.
     NOISY_DIR=${NOISY_DIR:-prep_data/train_augmented}
   else
@@ -90,6 +94,10 @@ TRAIN="
 --data_dir=${DATA_DIR}
 --meta_data=${META_DATA}
 --noisy_dir=${NOISY_DIR}
+--val_data_dir=${VAL_DATA_DIR}
+--val_noisy_dir=${VAL_NOISY_DIR}
+--val_noisy_meta_data=${VAL_NOISY_META_DATA}
+--val_split=${VAL_SPLIT}
 --target=${TARGET}
 --training_mode=${MODE}
 --conditioning_image=${CONDITIONING_IMAGE}
@@ -105,6 +113,8 @@ TRAIN="
 --lambda_quality=1.0
 --lambda_quality_overall=1.0
 --save_interval=5000
+--validation_interval=5000
+--early_stop_patience=10
 --num_workers=4
 --devices=${GPU}
 "

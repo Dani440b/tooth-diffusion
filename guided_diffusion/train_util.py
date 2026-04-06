@@ -56,6 +56,9 @@ class TrainLoop:
         lambda_mask,
         lambda_quality,
         lambda_quality_overall,
+        val_data=None,
+        validation_interval=5000,
+        early_stop_patience=10,
     ):
         self.training_mode=training_mode
         self.target = target
@@ -63,6 +66,12 @@ class TrainLoop:
         self.lambda_mask = lambda_mask
         self.lambda_quality = lambda_quality
         self.lambda_quality_overall = lambda_quality_overall
+        self.val_data = val_data
+        self.iter_val_data = iter(val_data) if val_data is not None else None
+        self.validation_interval = int(validation_interval)
+        self.early_stop_patience = int(early_stop_patience)
+        self.best_val_loss = float("inf")
+        self.num_bad_validations = 0
         self.summary_writer = summary_writer
         self.wandb_run = wandb_run
         self.mode = mode
@@ -78,9 +87,7 @@ class TrainLoop:
         self.lr = lr
         print(
             f"Using learning rate: {self.lr} | "
-            f"Using lambda mask: {self.lambda_mask} | "
-            f"Using lambda quality metrics: {self.lambda_quality} | "
-            f"Using lambda quality overall: {self.lambda_quality_overall}"
+            f"Using lambda mask: {self.lambda_mask}"
         )
         self.ema_rate = (
             [ema_rate]
@@ -126,6 +133,147 @@ class TrainLoop:
             logger.warn(
                 "Training requires CUDA. "
             )
+
+    def _next_val_batch(self):
+        if self.val_data is None:
+            return None
+        try:
+            batch = next(self.iter_val_data)
+        except StopIteration:
+            if hasattr(self.val_data, 'sampler') and hasattr(self.val_data.sampler, 'set_epoch'):
+                self.val_data.sampler.set_epoch(self.step + self.resume_step)
+            self.iter_val_data = iter(self.val_data)
+            batch = next(self.iter_val_data)
+        return {k: v.to(self.device, non_blocking=True) for k, v in batch.items()}
+
+    def _build_micro_cond(self, batch, start, end):
+        micro_target = batch['image'][start:end].to(self.device)
+        micro_condition = None
+        if self.conditioning_image != "none" and 'cond_image' in batch:
+            micro_condition = batch['cond_image'][start:end].to(self.device)
+
+        micro_label = batch['label'][start:end].to(self.device) if 'label' in batch else None
+        micro_cond = {'condition': micro_condition}
+        if 'diagnosis' in batch:
+            micro_cond['diagnosis'] = batch['diagnosis'][start:end].to(self.device)
+        if 'age' in batch:
+            micro_cond['age'] = batch['age'][start:end].to(self.device)
+        if 'sex' in batch:
+            micro_cond['sex'] = batch['sex'][start:end].to(self.device)
+        if 'quality' in batch:
+            micro_cond['quality'] = batch['quality'][start:end].to(self.device)
+        if 'metadata_cond' in batch:
+            micro_cond['metadata_cond'] = batch['metadata_cond'][start:end].to(self.device)
+        return micro_target, micro_label, micro_cond, micro_condition
+
+    def run_validation(self):
+        if self.val_data is None:
+            return None, False
+
+        self.model.eval()
+        batch = self._next_val_batch()
+        if batch is None:
+            self.model.train()
+            return None, False
+
+        val_total = th.zeros(1, device=self.device)
+        n_micro = 0
+        val_recon = None
+        val_input = None
+        val_output = None
+
+        with th.no_grad():
+            for i in range(0, batch['image'].shape[0], self.microbatch):
+                end = i + self.microbatch
+                micro_target, micro_label, micro_cond, micro_condition = self._build_micro_cond(batch, i, end)
+                t, _ = self.schedule_sampler.sample(micro_target.shape[0], self.device)
+                autocast_enabled = self.use_fp16 and th.cuda.is_available()
+                with amp.autocast('cuda', enabled=autocast_enabled):
+                    losses1 = self.diffusion.training_losses(
+                        self.model,
+                        x_start=micro_target,
+                        t=t,
+                        model_kwargs=micro_cond,
+                        labels=micro_label,
+                        mode=self.mode,
+                    )
+
+                losses = losses1[0]
+                sample_idwt = losses1[2]
+                weights = th.ones(len(losses['mse_wav']), device=self.device)
+                val_loss = (losses['mse_wav'] * weights).mean()
+                if 'masked_mse' in losses:
+                    val_loss = val_loss + self.lambda_mask * losses['masked_mse']
+                    val_recon = losses['masked_mse'].detach()
+
+                val_total += val_loss.detach()
+                n_micro += 1
+
+                if val_output is None:
+                    val_output = sample_idwt.detach()
+                    val_input = micro_condition.detach() if micro_condition is not None else micro_target.detach()
+
+        val_total = val_total / max(n_micro, 1)
+        if dist.is_initialized():
+            dist.all_reduce(val_total, op=dist.ReduceOp.SUM)
+            val_total /= dist.get_world_size()
+            if val_recon is not None:
+                dist.all_reduce(val_recon, op=dist.ReduceOp.SUM)
+                val_recon /= dist.get_world_size()
+
+        should_stop = False
+        improved = val_total.item() < (self.best_val_loss - 1e-8)
+        if improved:
+            self.best_val_loss = val_total.item()
+            self.num_bad_validations = 0
+            if self.rank == 0:
+                self.save_best(self.best_val_loss)
+        else:
+            self.num_bad_validations += 1
+            if self.num_bad_validations >= self.early_stop_patience:
+                should_stop = True
+
+        if self.rank == 0:
+            logger.logkv_mean('val/loss', float(val_total.item()))
+            logger.logkv_mean('val/best_loss', float(self.best_val_loss))
+            logger.logkv('val/patience_count', int(self.num_bad_validations))
+            if val_recon is not None:
+                logger.logkv_mean('val/reconstruction_mse', float(val_recon.item()))
+
+            if self.summary_writer is not None:
+                self.summary_writer.add_scalar('val/loss', float(val_total.item()), global_step=self.step + self.resume_step)
+                self.summary_writer.add_scalar('val/best_loss', float(self.best_val_loss), global_step=self.step + self.resume_step)
+                if val_recon is not None:
+                    self.summary_writer.add_scalar('val/reconstruction_mse', float(val_recon.item()), global_step=self.step + self.resume_step)
+
+            if self.wandb_run is not None:
+                try:
+                    import wandb
+                    wandb_log = {
+                        'val/loss': float(val_total.item()),
+                        'val/best_loss': float(self.best_val_loss),
+                        'val/patience_count': int(self.num_bad_validations),
+                    }
+                    if val_recon is not None:
+                        wandb_log['val/reconstruction_mse'] = float(val_recon.item())
+
+                    if val_input is not None and val_output is not None:
+                        image_size = val_output.size()[2]
+                        out_mid = val_output[0, 0, :, :, image_size // 2].detach().cpu().numpy()
+                        in_mid = val_input[0, 0, :, :, image_size // 2].detach().cpu().numpy()
+                        in_mid = (in_mid - in_mid.min()) / (in_mid.max() - in_mid.min() + 1e-8)
+                        out_mid = (out_mid - out_mid.min()) / (out_mid.max() - out_mid.min() + 1e-8)
+                        wandb_log['val/input_image'] = wandb.Image((in_mid * 255).astype('uint8'), caption='validation_input')
+                        wandb_log['val/output_image'] = wandb.Image((out_mid * 255).astype('uint8'), caption='validation_output')
+                    self.wandb_run.log(wandb_log, step=self.step + self.resume_step)
+                except Exception as e:
+                    logger.log(f'Failed validation wandb logging: {e}')
+
+        self.model.train()
+        stop_tensor = th.tensor([1 if should_stop else 0], device=self.device, dtype=th.int32)
+        if dist.is_initialized():
+            dist.broadcast(stop_tensor, src=0)
+        return float(val_total.item()), bool(stop_tensor.item())
 
     def _load_and_sync_parameters(self):
         resume_checkpoint = find_resume_checkpoint() or self.resume_checkpoint
@@ -277,6 +425,22 @@ class TrainLoop:
             if self.step % 100 == 0:
                 print(f"[Rank {self.rank}] Step {self.step} — processed {(self.step + self.resume_step) * self.batch_size} samples.")
 
+            if self.validation_interval > 0 and self.val_data is not None and self.step % self.validation_interval == 0:
+                val_loss, should_stop = self.run_validation()
+                if self.rank == 0 and val_loss is not None:
+                    print(
+                        f"[Validation {self.step}] val_loss={val_loss:.6f} | "
+                        f"best={self.best_val_loss:.6f} | "
+                        f"patience={self.num_bad_validations}/{self.early_stop_patience}"
+                    )
+                if should_stop:
+                    if self.rank == 0:
+                        logger.log("Early stopping triggered by validation patience.")
+                        self.save()
+                    if dist.is_initialized():
+                        dist.barrier()
+                    return
+
             if self.step % self.save_interval == 0 and self.rank==0:
                 self.save()
                 # Run for a finite amount of time in integration tests.
@@ -298,14 +462,14 @@ class TrainLoop:
             self.grad_scaler.unscale_(self.opt)  # check self.grad_scaler._per_optimizer_states
 
         # compute norms
-        with torch.no_grad():
+        with th.no_grad():
             param_max_norm = max([p.abs().max().item() for p in self.model.parameters()])
             grad_max_norm = max([p.grad.abs().max().item() for p in self.model.parameters()])
             info['norm/param_max'] = param_max_norm
             info['norm/grad_max'] = grad_max_norm
 
-        if not torch.isfinite(lossmse): #infinite
-            if not torch.isfinite(torch.tensor(param_max_norm)):
+        if not th.isfinite(lossmse): #infinite
+            if not th.isfinite(th.tensor(param_max_norm)):
                 logger.log(f"Rank {self.rank}: Model parameters non-finite {param_max_norm}", level=logger.ERROR)
                 breakpoint()
             else:
@@ -438,28 +602,6 @@ class TrainLoop:
             else:
                 masked_mse = None       
 
-            if "quality_mse" in losses:
-                quality_mse = losses["quality_mse"].clone().detach()
-                dist.all_reduce(quality_mse)
-                quality_mse.div_(dist.get_world_size())
-            else:
-                quality_mse = None
-
-            if "quality_metrics_mse" in losses:
-                quality_metrics_mse = losses["quality_metrics_mse"].clone().detach()
-                dist.all_reduce(quality_metrics_mse)
-                quality_metrics_mse.div_(dist.get_world_size())
-            else:
-                quality_metrics_mse = None
-
-            if "quality_overall_mse" in losses:
-                quality_overall_mse = losses["quality_overall_mse"].clone().detach()
-                dist.all_reduce(quality_overall_mse)
-                quality_overall_mse.div_(dist.get_world_size())
-            else:
-                quality_overall_mse = None
-
-
             weights = th.ones(len(losses["mse_wav"]), device=self.device)# Equally weight all wavelet channel losses
             
             if self.rank == 0:
@@ -482,17 +624,8 @@ class TrainLoop:
                     self.summary_writer.add_scalar('loss/mse_wav_hhh', mse_wav[7].item(),
                                                 global_step=self.step + self.resume_step)
                 if masked_mse is not None:
-                    self.summary_writer.add_scalar('loss/masked_mse', masked_mse.item(), global_step=self.step + self.resume_step)
-                    logger.logkv_mean("masked_mse", masked_mse.item())
-                if quality_mse is not None:
-                    self.summary_writer.add_scalar('loss/quality_mse', quality_mse.item(), global_step=self.step + self.resume_step)
-                    logger.logkv_mean("quality_mse", quality_mse.item())
-                if quality_metrics_mse is not None:
-                    self.summary_writer.add_scalar('loss/quality_metrics_mse', quality_metrics_mse.item(), global_step=self.step + self.resume_step)
-                    logger.logkv_mean("quality_metrics_mse", quality_metrics_mse.item())
-                if quality_overall_mse is not None:
-                    self.summary_writer.add_scalar('loss/quality_overall_mse', quality_overall_mse.item(), global_step=self.step + self.resume_step)
-                    logger.logkv_mean("quality_overall_mse", quality_overall_mse.item())
+                    self.summary_writer.add_scalar('loss/reconstruction_mse', masked_mse.item(), global_step=self.step + self.resume_step)
+                    logger.logkv_mean("reconstruction_mse", masked_mse.item())
                 log_loss_dict(self.diffusion, t, {"mse_wav": mse_wav * weights.to(self.device)})
                 
                 # Log all wavelet losses and quartile losses to wandb
@@ -506,13 +639,7 @@ class TrainLoop:
                             wandb_log_dict[f'loss/mse_wav_{ch_name}'] = mse_wav[ch_idx].item()
                         # Log masked loss if present
                         if masked_mse is not None:
-                            wandb_log_dict['loss/masked_mse'] = masked_mse.item()
-                        if quality_mse is not None:
-                            wandb_log_dict['loss/quality_mse'] = quality_mse.item()
-                        if quality_metrics_mse is not None:
-                            wandb_log_dict['loss/quality_metrics_mse'] = quality_metrics_mse.item()
-                        if quality_overall_mse is not None:
-                            wandb_log_dict['loss/quality_overall_mse'] = quality_overall_mse.item()
+                            wandb_log_dict['loss/reconstruction_mse'] = masked_mse.item()
                         # Log quartile losses
                         for sub_t, sub_loss in zip(t.cpu().numpy(), (mse_wav * weights.to(self.device)).detach().cpu().numpy()):
                             quartile = int(4 * sub_t / self.diffusion.num_timesteps)
@@ -533,15 +660,11 @@ class TrainLoop:
             # If we have a mask loss, add it to the total loss and lambda_mask specified in run.sh file or default 10.0
             if "masked_mse" in losses:
                 loss = loss + self.lambda_mask * losses["masked_mse"]
-            if "quality_metrics_mse" in losses:
-                loss = loss + self.lambda_quality * losses["quality_metrics_mse"]
-            if "quality_overall_mse" in losses:
-                loss = loss + self.lambda_quality_overall * losses["quality_overall_mse"]
             
             lossmse = loss.detach()
             
             # perform some finiteness checks
-            if not torch.isfinite(loss):
+            if not th.isfinite(loss):
                 logger.log(f"Rank {self.rank}: Encountered non-finite loss {loss}")
             if self.use_fp16:
                 self.grad_scaler.scale(loss).backward()
@@ -596,6 +719,28 @@ class TrainLoop:
                 "wb",
             ) as f:
                 th.save(self.opt.state_dict(), f)
+
+    def save_best(self, val_loss):
+        if dist.is_initialized() and dist.get_rank() != 0:
+            return
+
+        logger.log(f"Saving new best model (val_loss={val_loss:.6f})...")
+        checkpoint_dir = os.path.join(logger.get_dir(), 'checkpoints')
+        os.makedirs(checkpoint_dir, exist_ok=True)
+
+        cond_str = "none"
+        if self.conditioning_image is not None and self.conditioning_image != "none":
+            cond_str = str(self.conditioning_image)
+        dataset_str = str(self.dataset)
+        target_str = str(self.target) if self.target is not None else "target"
+
+        model_name = f"{dataset_str}_target_{target_str}_cond_{cond_str}_best.pt"
+        opt_name = f"opt_{dataset_str}_target_{target_str}_cond_{cond_str}_best.pt"
+
+        with bf.BlobFile(bf.join(checkpoint_dir, model_name), "wb") as f:
+            th.save(self.model.state_dict(), f)
+        with bf.BlobFile(bf.join(checkpoint_dir, opt_name), "wb") as f:
+            th.save(self.opt.state_dict(), f)
 
 def parse_resume_step_from_filename(filename):
     """
