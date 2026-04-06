@@ -463,8 +463,10 @@ class TrainLoop:
 
         # compute norms
         with th.no_grad():
-            param_max_norm = max([p.abs().max().item() for p in self.model.parameters()])
-            grad_max_norm = max([p.grad.abs().max().item() for p in self.model.parameters()])
+            params = [p for p in self.model.parameters()]
+            param_max_norm = max([p.abs().max().item() for p in params], default=0.0)
+            grads = [p.grad for p in params if p.grad is not None]
+            grad_max_norm = max([g.abs().max().item() for g in grads], default=0.0)
             info['norm/param_max'] = param_max_norm
             info['norm/grad_max'] = grad_max_norm
 

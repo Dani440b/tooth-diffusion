@@ -1189,7 +1189,6 @@ class GaussianDiffusion:
                 age=age,
                 sex=sex,
                 quality=quality,
-                return_quality=False,
             )
         except TypeError:
             model_output = model(
