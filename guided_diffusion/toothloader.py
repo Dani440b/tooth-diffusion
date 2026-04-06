@@ -21,7 +21,7 @@ class ToothVolumes(torch.utils.data.Dataset):
         self.img_size = img_size
         self.database = []
         self.noisy_dir = os.path.expanduser(noisy_dir) if noisy_dir else None
-        self.quality_dim = 8  # 7 artifact metrics + 1 overall score
+        self.quality_dim = 7  # 7 artifact metrics only
         
         self.image_dir = os.path.join(directory, "Images")
         self.label_dir = os.path.join(directory, "Labels")
@@ -105,7 +105,7 @@ class ToothVolumes(torch.utils.data.Dataset):
         return self._safe_float(value, default=default)
 
     def _quality_from_applied_transforms(self, applied_transforms_raw):
-        # Quality order: [sdr, cvr, truncation_ratio, alpha, psnr_normalized, freq_ratio, spike_fraction, overall]
+        # Quality order: [sdr, cvr, truncation_ratio, alpha, psnr_normalized, freq_ratio, spike_fraction]
         quality = np.zeros(self.quality_dim, dtype=np.float32)
         if not applied_transforms_raw:
             return quality
@@ -184,7 +184,6 @@ class ToothVolumes(torch.utils.data.Dataset):
             [sdr, cvr, truncation_ratio, alpha, psnr_normalized, freq_ratio, spike_fraction],
             dtype=np.float32,
         )
-        quality[7] = float(np.clip(np.mean(quality[:7]), 0.0, 1.0))
         return quality
 
     def _extract_quality_vector(self, aug_row):
@@ -202,17 +201,17 @@ class ToothVolumes(torch.utils.data.Dataset):
             if all(k in aug_row for k in canonical_artifact_keys):
                 artifacts = [self._safe_float(aug_row.get(k, 0.0), default=0.0) for k in canonical_artifact_keys]
                 artifacts = np.clip(np.array(artifacts, dtype=np.float32), 0.0, 1.0)
-                overall = float(np.clip(np.mean(artifacts), 0.0, 1.0))
-                return np.concatenate([artifacts, np.array([overall], dtype=np.float32)], axis=0)
+                return artifacts
 
             prefixed = [k for k in aug_row.keys() if str(k).startswith("quality_")]
+            prefixed = [k for k in prefixed if str(k) not in ("quality_overall", "quality_overall_score")]
             if len(prefixed) >= self.quality_dim:
                 prefixed = sorted(prefixed)
                 values = [self._safe_float(aug_row[k], default=0.0) for k in prefixed[:self.quality_dim]]
                 return np.clip(np.array(values, dtype=np.float32), 0.0, 1.0)
 
             if all(k in aug_row for k in ["q_noise", "q_spike", "q_blur", "q_bias", "q_ghost", "q_motion", "q_overall"]):
-                # Legacy 6+overall format: map to 7+overall by repeating motion score for missing 7th artifact slot.
+                # Legacy 6+overall format: map to 7 artifact-only values by repeating motion score for the 7th slot.
                 values = [
                     self._safe_float(aug_row.get("q_noise", 0.0)),
                     self._safe_float(aug_row.get("q_spike", 0.0)),
@@ -221,7 +220,6 @@ class ToothVolumes(torch.utils.data.Dataset):
                     self._safe_float(aug_row.get("q_ghost", 0.0)),
                     self._safe_float(aug_row.get("q_motion", 0.0)),
                     self._safe_float(aug_row.get("q_motion", 0.0)),
-                    self._safe_float(aug_row.get("q_overall", 0.0)),
                 ]
                 return np.clip(np.array(values, dtype=np.float32), 0.0, 1.0)
 

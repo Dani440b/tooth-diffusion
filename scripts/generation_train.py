@@ -318,7 +318,7 @@ def create_argparser():
         channel_mult="1,2,2,4,4",
         in_channels=8,
         metadata_as_channels=True,
-        metadata_channels_dim=13,
+        metadata_channels_dim=12,
         out_channels=8,
         bottleneck_attention=False,
         num_workers=0,

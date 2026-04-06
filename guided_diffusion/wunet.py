@@ -478,7 +478,7 @@ class WavUNetModel(nn.Module):
         self.diagnosis_embedding = nn.Linear(3, time_embed_dim)  # 3-class diagnosis (CN, MCI, AD)
         self.age_embedding = nn.Linear(1, time_embed_dim)        # Age (normalized)
         self.sex_embedding = nn.Linear(1, time_embed_dim)        # Sex (M/F)
-        self.quality_embedding = nn.Linear(8, time_embed_dim)    # 7 artifact scores + overall
+        self.quality_embedding = nn.Linear(7, time_embed_dim)    # 7 artifact scores
 
             
         ###############
@@ -756,7 +756,7 @@ class WavUNetModel(nn.Module):
         :param diagnosis: an [N x 3] Tensor one-hot encoded for disease (CN, MCI, AD).
         :param age: an [N x 1] Tensor of age normalized to [0, 1].
         :param sex: an [N x 1] Tensor of sex (0=F, 1=M).
-        :param quality: an [N x 8] Tensor (7 artifact scores + overall).
+        :param quality: an [N x 7] Tensor of artifact scores.
         :return: an [N x C x ...] Tensor of outputs.
         """
         
