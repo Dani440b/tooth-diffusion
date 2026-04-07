@@ -179,7 +179,8 @@ class TrainLoop:
         val_total = th.zeros(1, device=self.device)
         n_micro = 0
         val_recon = None
-        val_input = None
+        val_noisy_input = None
+        val_clean_ref = None
         val_output = None
 
         with th.no_grad():
@@ -211,7 +212,8 @@ class TrainLoop:
 
                 if val_output is None:
                     val_output = sample_idwt.detach()
-                    val_input = micro_condition.detach() if micro_condition is not None else micro_target.detach()
+                    val_noisy_input = micro_condition.detach() if micro_condition is not None else micro_target.detach()
+                    val_clean_ref = micro_target.detach()
 
         val_total = val_total / max(n_micro, 1)
         if dist.is_initialized():
@@ -257,13 +259,16 @@ class TrainLoop:
                     if val_recon is not None:
                         wandb_log['val/reconstruction_mse'] = float(val_recon.item())
 
-                    if val_input is not None and val_output is not None:
+                    if val_noisy_input is not None and val_clean_ref is not None and val_output is not None:
                         image_size = val_output.size()[2]
                         out_mid = val_output[0, 0, :, :, image_size // 2].detach().cpu().numpy()
-                        in_mid = val_input[0, 0, :, :, image_size // 2].detach().cpu().numpy()
-                        in_mid = (in_mid - in_mid.min()) / (in_mid.max() - in_mid.min() + 1e-8)
+                        noisy_mid = val_noisy_input[0, 0, :, :, image_size // 2].detach().cpu().numpy()
+                        clean_mid = val_clean_ref[0, 0, :, :, image_size // 2].detach().cpu().numpy()
+                        noisy_mid = (noisy_mid - noisy_mid.min()) / (noisy_mid.max() - noisy_mid.min() + 1e-8)
+                        clean_mid = (clean_mid - clean_mid.min()) / (clean_mid.max() - clean_mid.min() + 1e-8)
                         out_mid = (out_mid - out_mid.min()) / (out_mid.max() - out_mid.min() + 1e-8)
-                        wandb_log['val/input_image'] = wandb.Image((in_mid * 255).astype('uint8'), caption='validation_input')
+                        wandb_log['val/noisy_input_image'] = wandb.Image((noisy_mid * 255).astype('uint8'), caption='validation_noisy_input')
+                        wandb_log['val/clean_reference_image'] = wandb.Image((clean_mid * 255).astype('uint8'), caption='validation_clean_reference')
                         wandb_log['val/output_image'] = wandb.Image((out_mid * 255).astype('uint8'), caption='validation_output')
                     self.wandb_run.log(wandb_log, step=self.step + self.resume_step)
                 except Exception as e:
