@@ -6,7 +6,6 @@ import os
 import os.path
 import nibabel
 import pandas as pd
-import json
 
 class ToothVolumes(torch.utils.data.Dataset):
     def __init__(self, directory, metadata_path, test_flag=False, normalize=None, mode='train', img_size=256,
@@ -32,7 +31,6 @@ class ToothVolumes(torch.utils.data.Dataset):
         self.metadata = pd.read_csv(self.metadata_path)
         self.metadata.columns = self.metadata.columns.str.strip()  # removes leading/trailing spaces
 
-        # Fast lookup by BASENAME for clinical metadata joins.
         self._metadata_by_basename = self.metadata.set_index('BASENAME') if 'BASENAME' in self.metadata.columns else None
 
         if self.noisy_dir is not None:
@@ -98,134 +96,35 @@ class ToothVolumes(torch.utils.data.Dataset):
         except Exception:
             return float(default)
 
-    def _extract_transform_strength(self, params, key, default=0.0):
-        value = params.get(key, default)
-        if isinstance(value, (list, tuple)) and len(value) > 0:
-            return self._safe_float(np.mean(value), default=default)
-        return self._safe_float(value, default=default)
-
-    def _quality_from_applied_transforms(self, applied_transforms_raw):
-        # Quality order: [sdr, cvr, truncation_ratio, alpha, psnr_normalized, freq_ratio, spike_fraction]
-        quality = np.zeros(self.quality_dim, dtype=np.float32)
-        if not applied_transforms_raw:
-            return quality
-
-        try:
-            if isinstance(applied_transforms_raw, str):
-                transforms = json.loads(applied_transforms_raw)
-            elif isinstance(applied_transforms_raw, dict):
-                transforms = applied_transforms_raw
-            else:
-                transforms = {}
-        except Exception:
-            transforms = {}
-
-        sdr = 1.0
-        cvr = 1.0
-        truncation_ratio = 1.0
-        alpha = 1.0
-        psnr_normalized = 1.0
-        freq_ratio = 1.0
-        spike_fraction = 0.0
-
-        if "RandomNoise" in transforms:
-            p = transforms.get("RandomNoise", {})
-            std_val = self._extract_transform_strength(p, "std", default=0.0)
-            if std_val == 0.0:
-                std_val = self._extract_transform_strength(p, "std_range", default=0.0)
-            psnr_normalized = float(np.clip(1.0 - (std_val / 0.08), 0.0, 1.0))
-
-        if "RandomSpike" in transforms:
-            p = transforms.get("RandomSpike", {})
-            num_spikes = self._extract_transform_strength(p, "num_spikes", default=0.0)
-            if num_spikes == 0.0:
-                num_spikes = self._extract_transform_strength(p, "num_spikes_range", default=0.0)
-            spike_fraction = float(np.clip(num_spikes / 5.0, 0.0, 1.0))
-
-        if "RandomBlur" in transforms:
-            p = transforms.get("RandomBlur", {})
-            sigma = self._extract_transform_strength(p, "std", default=0.0)
-            if sigma == 0.0:
-                sigma = self._extract_transform_strength(p, "std_range", default=0.0)
-            freq_ratio = float(np.clip(1.0 - (sigma / 1.0), 0.0, 1.0))
-
-        if "RandomBiasField" in transforms:
-            p = transforms.get("RandomBiasField", {})
-            coeff = self._extract_transform_strength(p, "coefficients", default=0.0)
-            cvr = float(np.clip(1.0 - (coeff / 0.5), 0.0, 1.0))
-
-        if "RandomGamma" in transforms:
-            p = transforms.get("RandomGamma", {})
-            log_gamma = self._extract_transform_strength(p, "log_gamma", default=0.0)
-            if log_gamma == 0.0:
-                log_gamma = self._extract_transform_strength(p, "log_gamma_range", default=0.0)
-            sdr = float(np.clip(1.0 - abs(log_gamma) / 0.3, 0.0, 1.0))
-
-        if "RandomSwap" in transforms:
-            p = transforms.get("RandomSwap", {})
-            patch = self._extract_transform_strength(p, "patch_size", default=0.0)
-            truncation_ratio = float(np.clip(1.0 - (patch / 15.0), 0.0, 1.0))
-
-        if "RandomGhosting" in transforms:
-            p = transforms.get("RandomGhosting", {})
-            intensity = self._extract_transform_strength(p, "intensity", default=0.0)
-            if intensity == 0.0:
-                intensity = self._extract_transform_strength(p, "intensity_range", default=0.0)
-            alpha = float(np.clip(1.0 - (intensity / 0.7), 0.0, 1.0))
-
-        if "RandomMotion" in transforms:
-            p = transforms.get("RandomMotion", {})
-            degrees = self._extract_transform_strength(p, "degrees", default=0.0)
-            translation = self._extract_transform_strength(p, "translation", default=0.0)
-            motion_alpha = 1.0 - np.clip((degrees / 10.0 + translation / 5.0) / 2.0, 0.0, 1.0)
-            alpha = float(min(alpha, motion_alpha))
-
-        quality[:7] = np.array(
-            [sdr, cvr, truncation_ratio, alpha, psnr_normalized, freq_ratio, spike_fraction],
-            dtype=np.float32,
-        )
-        return quality
-
     def _extract_quality_vector(self, aug_row):
-        # Preferred path: explicit quality columns in future metadata schema.
-        if isinstance(aug_row, dict):
-            canonical_artifact_keys = [
-                "sdr",
-                "cvr",
-                "truncation_ratio",
-                "alpha",
-                "psnr_normalized",
-                "freq_ratio",
-                "spike_score",
-            ]
-            if all(k in aug_row for k in canonical_artifact_keys):
-                artifacts = [self._safe_float(aug_row.get(k, 0.0), default=0.0) for k in canonical_artifact_keys]
-                artifacts = np.clip(np.array(artifacts, dtype=np.float32), 0.0, 1.0)
-                return artifacts
+        canonical_artifact_keys = [
+            "sdr",
+            "cvr",
+            "truncation_ratio",
+            "alpha",
+            "psnr_normalized",
+            "freq_ratio",
+            "spike_score",
+        ]
 
-            prefixed = [k for k in aug_row.keys() if str(k).startswith("quality_")]
-            prefixed = [k for k in prefixed if str(k) not in ("quality_overall", "quality_overall_score")]
-            if len(prefixed) >= self.quality_dim:
-                prefixed = sorted(prefixed)
-                values = [self._safe_float(aug_row[k], default=0.0) for k in prefixed[:self.quality_dim]]
-                return np.clip(np.array(values, dtype=np.float32), 0.0, 1.0)
+        if not isinstance(aug_row, dict):
+            if self.noisy_dir is None:
+                # Non-augmented mode has no augmentation row; use zeros for compatibility.
+                return np.zeros(self.quality_dim, dtype=np.float32)
+            raise ValueError(
+                "Expected augmentation metadata row dict with canonical quality columns "
+                f"{canonical_artifact_keys}, but got {type(aug_row).__name__}."
+            )
 
-            if all(k in aug_row for k in ["q_noise", "q_spike", "q_blur", "q_bias", "q_ghost", "q_motion", "q_overall"]):
-                # Legacy 6+overall format: map to 7 artifact-only values by repeating motion score for the 7th slot.
-                values = [
-                    self._safe_float(aug_row.get("q_noise", 0.0)),
-                    self._safe_float(aug_row.get("q_spike", 0.0)),
-                    self._safe_float(aug_row.get("q_blur", 0.0)),
-                    self._safe_float(aug_row.get("q_bias", 0.0)),
-                    self._safe_float(aug_row.get("q_ghost", 0.0)),
-                    self._safe_float(aug_row.get("q_motion", 0.0)),
-                    self._safe_float(aug_row.get("q_motion", 0.0)),
-                ]
-                return np.clip(np.array(values, dtype=np.float32), 0.0, 1.0)
+        missing = [k for k in canonical_artifact_keys if k not in aug_row]
+        if missing:
+            raise KeyError(
+                "Missing canonical quality columns in augmentation metadata: "
+                f"{missing}. Required: {canonical_artifact_keys}."
+            )
 
-            return self._quality_from_applied_transforms(aug_row.get("applied_transforms", ""))
-
-        return np.zeros(self.quality_dim, dtype=np.float32)
+        artifacts = [self._safe_float(aug_row.get(k, 0.0), default=0.0) for k in canonical_artifact_keys]
+        return np.clip(np.array(artifacts, dtype=np.float32), 0.0, 1.0)
       
     #Normalize
     def normalize_image(self, x):
@@ -310,7 +209,7 @@ class ToothVolumes(torch.utils.data.Dataset):
         cond_image_np = np.ascontiguousarray(cond_image_np)
         cond_label_np = np.ascontiguousarray(brain_mask)
 
-        # For MRI, skip tooth-specific augmentation (no teeth in MRI)
+        # (no teeth in MRI) mayb delete?
         # The augment_missing_teeth and reconstruct_3_mode flags are for tooth data only
 
         if not self.mode == 'fake':
