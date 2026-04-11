@@ -10,6 +10,8 @@ from torch.optim import AdamW
 import torch.amp as amp
 
 import itertools
+import numpy as np
+from skimage.metrics import structural_similarity as ssim, peak_signal_noise_ratio as psnr
 
 from . import dist_util, logger
 from .resample import LossAwareSampler, UniformSampler
@@ -22,6 +24,25 @@ def visualize(img):
     _max = img.max()
     normalized_img = (img - _min)/ (_max - _min)
     return normalized_img
+
+def compute_image_metrics(pred_vol, target_vol):
+    """Compute SSIM, PSNR, MAE on the centre axial slice of a 3D volume.
+
+    Args:
+        pred_vol:   numpy array [H, W, D], float32, already normalised to [0, 1].
+        target_vol: numpy array [H, W, D], float32, already normalised to [0, 1].
+
+    Returns dict with keys ssim, psnr, mae.
+    """
+    mid = pred_vol.shape[2] // 2
+    p = pred_vol[:, :, mid].astype(np.float64)
+    t = target_vol[:, :, mid].astype(np.float64)
+    data_range = 1.0  # images normalised to [0, 1]
+    return {
+        "ssim": ssim(t, p, data_range=data_range),
+        "psnr": psnr(t, p, data_range=data_range),
+        "mae":  float(np.mean(np.abs(p - t))),
+    }
 
 class TrainLoop:
     def __init__(
@@ -235,18 +256,35 @@ class TrainLoop:
             if self.num_bad_validations >= self.early_stop_patience:
                 should_stop = True
 
+        # Compute image-quality metrics (rank 0 only; uses first sample in batch)
+        img_metrics = {}
+        if self.rank == 0 and val_output is not None and val_clean_ref is not None:
+            try:
+                pred_np = val_output[0, 0].detach().cpu().float().numpy()
+                ref_np  = val_clean_ref[0, 0].detach().cpu().float().numpy()
+                # Normalise each volume to [0, 1] independently
+                pred_np = (pred_np - pred_np.min()) / (pred_np.max() - pred_np.min() + 1e-8)
+                ref_np  = (ref_np  - ref_np.min())  / (ref_np.max()  - ref_np.min()  + 1e-8)
+                img_metrics = compute_image_metrics(pred_np, ref_np)
+            except Exception as e:
+                logger.log(f'Failed to compute image metrics: {e}')
+
         if self.rank == 0:
             logger.logkv_mean('val/loss', float(val_total.item()))
             logger.logkv_mean('val/best_loss', float(self.best_val_loss))
             logger.logkv('val/patience_count', int(self.num_bad_validations))
             if val_recon is not None:
                 logger.logkv_mean('val/reconstruction_mse', float(val_recon.item()))
+            for k, v in img_metrics.items():
+                logger.logkv_mean(f'val/{k}', float(v))
 
             if self.summary_writer is not None:
                 self.summary_writer.add_scalar('val/loss', float(val_total.item()), global_step=self.step + self.resume_step)
                 self.summary_writer.add_scalar('val/best_loss', float(self.best_val_loss), global_step=self.step + self.resume_step)
                 if val_recon is not None:
                     self.summary_writer.add_scalar('val/reconstruction_mse', float(val_recon.item()), global_step=self.step + self.resume_step)
+                for k, v in img_metrics.items():
+                    self.summary_writer.add_scalar(f'val/{k}', float(v), global_step=self.step + self.resume_step)
 
             if self.wandb_run is not None:
                 try:
@@ -258,6 +296,8 @@ class TrainLoop:
                     }
                     if val_recon is not None:
                         wandb_log['val/reconstruction_mse'] = float(val_recon.item())
+                    for k, v in img_metrics.items():
+                        wandb_log[f'val/{k}'] = float(v)
 
                     if val_noisy_input is not None and val_clean_ref is not None and val_output is not None:
                         image_size = val_output.size()[2]
