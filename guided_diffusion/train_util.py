@@ -310,6 +310,42 @@ class TrainLoop:
                         wandb_log['val/noisy_input_image'] = wandb.Image((noisy_mid * 255).astype('uint8'), caption='validation_noisy_input')
                         wandb_log['val/clean_reference_image'] = wandb.Image((clean_mid * 255).astype('uint8'), caption='validation_clean_reference')
                         wandb_log['val/output_image'] = wandb.Image((out_mid * 255).astype('uint8'), caption='validation_output')
+
+                        # Log full diffusion horizon for one validation sample (all timesteps).
+                        dwt_vis = DWT_3D('haar').to(self.device)
+                        idwt_vis = IDWT_3D('haar').to(self.device)
+                        clean_vol = val_clean_ref[0:1].to(self.device)
+                        LLL, LLH, LHL, LHH, HLL, HLH, HHL, HHH = dwt_vis(clean_vol)
+                        clean_dwt = th.cat([LLL / 3., LLH, LHL, LHH, HLL, HLH, HHL, HHH], dim=1)
+                        fixed_noise = th.randn_like(clean_dwt)
+                        horizon_images = []
+                        total_steps = int(self.diffusion.num_timesteps)
+
+                        for t_step in range(total_steps):
+                            t_tensor = th.tensor([t_step], device=self.device, dtype=th.long)
+                            x_t_dwt = self.diffusion.q_sample(clean_dwt, t_tensor, noise=fixed_noise)
+                            B, _, H, W, D = x_t_dwt.size()
+                            x_t_img = idwt_vis(
+                                x_t_dwt[:, 0, :, :, :].view(B, 1, H, W, D) * 3.,
+                                x_t_dwt[:, 1, :, :, :].view(B, 1, H, W, D),
+                                x_t_dwt[:, 2, :, :, :].view(B, 1, H, W, D),
+                                x_t_dwt[:, 3, :, :, :].view(B, 1, H, W, D),
+                                x_t_dwt[:, 4, :, :, :].view(B, 1, H, W, D),
+                                x_t_dwt[:, 5, :, :, :].view(B, 1, H, W, D),
+                                x_t_dwt[:, 6, :, :, :].view(B, 1, H, W, D),
+                                x_t_dwt[:, 7, :, :, :].view(B, 1, H, W, D),
+                            )
+                            mid_slice = x_t_img[0, 0, :, :, D // 2].detach().cpu().numpy()
+                            mid_slice = (mid_slice - mid_slice.min()) / (mid_slice.max() - mid_slice.min() + 1e-8)
+                            alpha_bar = float(self.diffusion.alphas_cumprod[t_step])
+                            horizon_images.append(
+                                wandb.Image(
+                                    (mid_slice * 255).astype('uint8'),
+                                    caption=f't={t_step}, alpha_bar={alpha_bar:.4f}'
+                                )
+                            )
+
+                        wandb_log['val/diffusion_horizon_all_steps'] = horizon_images
                     self.wandb_run.log(wandb_log, step=self.step + self.resume_step)
                 except Exception as e:
                     logger.log(f'Failed validation wandb logging: {e}')
